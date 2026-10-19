@@ -1,0 +1,96 @@
+# One game's installer, from the launcher.json in its repo. A game repo calls
+# it (README: "Adding a game"); every run leaves the installers as artifacts,
+# and a v* tag puts them on that tag's release.
+name: installer
+
+on:
+  workflow_call:
+    inputs:
+      name:
+        description: "The installer's file name, without the platform or extension"
+        type: string
+        required: true
+      manifest:
+        description: "The folder in the game's repo holding launcher.json"
+        type: string
+        default: launcher
+      launcher-ref:
+        description: "The recomp-launcher version to build"
+        type: string
+        default: main
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - { os: windows-2022, file: windows-x64.exe, ldflags: -H=windowsgui }
+          - { os: ubuntu-24.04, file: linux-x64 }
+          - { os: macos-14, file: macos-arm64 }
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    env:
+      OUT: ${{ inputs.name }}-${{ matrix.file }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: sp00nznet/recomp-launcher
+          ref: ${{ inputs.launcher-ref }}
+      - uses: actions/checkout@v4
+        with:
+          path: _game
+          sparse-checkout: ${{ inputs.manifest }}
+      - run: rm -rf game && cp -r "_game/${{ inputs.manifest }}" game
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install --yes libasound2-dev libgl1-mesa-dev xorg-dev
+      # the game repo's commit is the one the installer fetches and builds
+      - run: go build -ldflags "-X main.commit=${{ github.sha }} ${{ matrix.ldflags }}" -o "out/$OUT" .
+      # tar keeps the executable bit, which a plain download loses
+      - if: runner.os == 'Linux'
+        run: tar -C out -czf "out/$OUT.tar.gz" "$OUT" && rm "out/$OUT"
+      # an app, so a double-click doesn't open a terminal
+      - if: runner.os == 'macOS'
+        run: |
+          app="out/${{ inputs.name }}.app"
+          mkdir -p "$app/Contents/MacOS"
+          mv "out/$OUT" "$app/Contents/MacOS/installer"
+          cat > "$app/Contents/Info.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>CFBundleExecutable</key><string>installer</string>
+            <key>CFBundleIdentifier</key><string>net.sp00nz.${{ inputs.name }}</string>
+            <key>CFBundleName</key><string>${{ inputs.name }}</string>
+            <key>CFBundlePackageType</key><string>APPL</string>
+            <key>NSHighResolutionCapable</key><true/>
+          </dict></plist>
+          EOF
+          (cd out && zip -qry "$OUT.zip" "${{ inputs.name }}.app" && rm -rf "${{ inputs.name }}.app")
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.OUT }}
+          path: out/*
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: out
+          merge-multiple: true
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        # a tag with a hyphen (v0.1.0-alpha.1) is a pre-release
+        run: |
+          pre=; case "$GITHUB_REF_NAME" in *-*) pre=--prerelease ;; esac
+          gh release upload "$GITHUB_REF_NAME" out/* --clobber -R "$GITHUB_REPOSITORY" ||
+            gh release create "$GITHUB_REF_NAME" out/* -R "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --generate-notes $pre

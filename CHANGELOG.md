@@ -1,0 +1,31 @@
+# Changelog
+
+Versions follow [SemVer](https://semver.org/).
+
+## [0.2.0] - 2026-10-19
+
+One installer per game instead of one launcher for every game.
+
+### Added
+- A game's installer is this program built with the `launcher.json` from
+  the game's repo, by the reusable workflow `.github/workflows/installer.yml`
+  (Windows `.exe`, Linux `.tar.gz`, macOS `.app` zip; artifacts on every push,
+  release files on a `v*` tag).
+- Three screens: the game (found in Steam libraries or the registry, or
+  chosen), building (a progress bar from the setup's `[n/N]` lines, details
+  on request, cancel), and Play buttons with desktop shortcuts. A failed build
+  shows the setup's own reason and **Try again**.
+- No git needed: the game's repo (at the installer's commit) and its toolkit
+  come as zips.
+- `--shots DIR` renders every screen to PNGs; `--build` starts at once.
+
+### Changed
+- A plain look in place of the cracktro one.
+
+### Removed
+- The list of every recomp, the catalog tool and the triage report.
+
+## [0.1.0]
+
+The first launcher: every sp00nznet recomp with a setup script in one list,
+set up and played from one app.
