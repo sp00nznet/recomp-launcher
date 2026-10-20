@@ -9,6 +9,8 @@ Versions follow [SemVer](https://semver.org/).
   game, for a title whose setup takes an image rather than an install.
 - `installer.yml` takes `platforms` (default `windows linux macos`), so a
   Windows-only game doesn't publish installers that can't build it.
+- A `game.files` entry may be alternatives, `a|b`: `HOVER.EXE|hover*.zip` is
+  the game's folder or a folder holding a zip of it.
 
 ### Fixed
 - On Windows a step line after a blank line was glued to the line before it

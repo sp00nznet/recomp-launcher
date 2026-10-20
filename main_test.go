@@ -72,6 +72,20 @@ func TestGameFolderAndLabels(t *testing.T) {
 	if !m.isGame(iso) {
 		t.Fatal("*.iso missed an image in a folder with brackets in its path")
 	}
+	m.Game.Files = []string{"HOVER.EXE|hover*.zip|FUNSTUFF/HOVER/HOVER.EXE"}
+	if m.isGame(dir) {
+		t.Fatal("none of the alternatives is there")
+	}
+	os.WriteFile(filepath.Join(dir, "hoverwindows95.zip"), nil, 0o644)
+	if !m.isGame(dir) {
+		t.Fatal("one alternative is enough")
+	}
+	cd := t.TempDir()
+	os.MkdirAll(filepath.Join(cd, "FUNSTUFF", "HOVER"), 0o755)
+	os.WriteFile(filepath.Join(cd, "FUNSTUFF", "HOVER", "HOVER.EXE"), nil, 0o644)
+	if !m.isGame(cd) {
+		t.Fatal("an alternative in a subfolder")
+	}
 	if got := playLabel("/x/Yuri's Revenge (recomp).cmd"); got != "Play Yuri's Revenge" {
 		t.Fatal(got)
 	}
