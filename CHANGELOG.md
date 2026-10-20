@@ -10,6 +10,10 @@ Versions follow [SemVer](https://semver.org/).
 - `installer.yml` takes `platforms` (default `windows linux macos`), so a
   Windows-only game doesn't publish installers that can't build it.
 
+### Fixed
+- On Windows a step line after a blank line was glued to the line before it
+  (ConPTY skips the blank line with a cursor move), so the bar missed that step.
+
 ## [0.2.0] - 2026-10-19
 
 One installer per game instead of one launcher for every game.

@@ -27,6 +27,9 @@ func Answer(w io.Writer, s string) error {
 
 var (
 	cursorRight = regexp.MustCompile(`\x1b\[(\d*)C`)
+	// ConPTY skips a blank line by moving to the next row's first column
+	// (ESC[4;1H) instead of printing another newline.
+	toLineStart = regexp.MustCompile(`\x1b\[\d+;1H`)
 	// colours, cursor moves, window titles: the log is plain text
 	escapes = regexp.MustCompile(`\x1b\[[0-9;?]*[A-Za-z]|\x1b\][^\x07]*\x07|\x1b[=>]`)
 )
@@ -44,5 +47,8 @@ func Clean(s string) string {
 		}
 		return strings.Repeat(" ", n)
 	})
+	// ponytail: any jump to a row's start is a new line; a full-screen redraw
+	// (not something a setup script does) would come out as extra lines.
+	s = toLineStart.ReplaceAllString(s, "\n")
 	return strings.ReplaceAll(escapes.ReplaceAllString(s, ""), "\r\n", "\n")
 }
