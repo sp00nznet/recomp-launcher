@@ -82,8 +82,11 @@ Linux needs `libgl1-mesa-dev xorg-dev libasound2-dev` (Ebitengine, with cgo).
 A game's own installer is this with its `launcher.json` in `game/` and
 `-ldflags "-X main.commit=<the game repo's commit>"`.
 
-The installers aren't signed: Windows SmartScreen asks (**More info**, **Run
-anyway**), and on a Mac it opens with right-click, **Open**.
+The installers aren't signed by a developer: Windows SmartScreen asks (**More
+info**, **Run anyway**). On a Mac the app is signed ad hoc only: open it once,
+then **Open Anyway** in System Settings, Privacy & Security. If macOS still
+says it is damaged (an installer built before 0.2.1), run
+`xattr -dr com.apple.quarantine` on the app.
 
 ## License
 

@@ -86,6 +86,9 @@ jobs:
             <key>NSHighResolutionCapable</key><true/>
           </dict></plist>
           EOF
+          # ponytail: ad-hoc, not notarised. Unsigned, a downloaded bundle is
+          # "damaged" with no way past; ad-hoc gets "Open Anyway" in Privacy & Security
+          codesign --force --deep --sign - "$app"
           (cd out && zip -qry "$OUT.zip" "${{ inputs.name }}.app" && rm -rf "${{ inputs.name }}.app")
       - uses: actions/upload-artifact@v4
         with:
