@@ -89,4 +89,9 @@ func TestClean(t *testing.T) {
 	if want := "Checking\n  Ask? [Y/n]: y\n"; got != want {
 		t.Fatalf("got %q, want %q", got, want)
 	}
+	// what ConPTY sent for Write-Host 'two'; Write-Host ''; Write-Host '[2/5] three'
+	got = Clean("\x1b[?1004l\r\ntwo\x1b[4;1H[2/5] three\r\n\x1b[?25h")
+	if want := "\ntwo\n[2/5] three\n"; got != want {
+		t.Fatalf("a skipped blank line: got %q, want %q", got, want)
+	}
 }

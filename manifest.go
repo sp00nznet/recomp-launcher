@@ -56,11 +56,28 @@ func (m manifest) isGame(dir string) bool {
 		return false
 	}
 	for _, f := range m.Game.Files {
-		if !fileExists(filepath.Join(dir, f)) {
+		if !hasFile(dir, f) {
 			return false
 		}
 	}
 	return true
+}
+
+// hasFile: dir holds a file named f, or one matching it when f is a glob
+// ("*.iso": a disc image whose name the player chose). The glob is matched
+// against the names, not the path, so a folder like "Games [USA]" is safe.
+func hasFile(dir, f string) bool {
+	if !strings.ContainsAny(f, `*?[`) {
+		return fileExists(filepath.Join(dir, f))
+	}
+	ents, _ := os.ReadDir(dir)
+	for _, e := range ents {
+		// case-blind: Windows and macOS folders are, and an ISO is as often .ISO
+		if ok, _ := filepath.Match(strings.ToLower(f), strings.ToLower(e.Name())); ok && !e.IsDir() {
+			return true
+		}
+	}
+	return false
 }
 
 // findGame looks where stores install it: the registry entries, then every

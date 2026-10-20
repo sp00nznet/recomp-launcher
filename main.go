@@ -815,7 +815,7 @@ func (a *App) shotScene() {
 		d := filepath.Join(os.TempDir(), "SteamLibrary", "steamapps", "common", a.m.Game.Steam)
 		os.MkdirAll(d, 0o755)
 		for _, f := range a.m.Game.Files {
-			os.WriteFile(filepath.Join(d, f), nil, 0o644)
+			os.WriteFile(filepath.Join(d, strings.NewReplacer("*", "game", "?", "x").Replace(f)), nil, 0o644)
 		}
 		a.scr, a.st.Game, a.found = scStart, d, "Found in your Steam library"
 	case 1:
