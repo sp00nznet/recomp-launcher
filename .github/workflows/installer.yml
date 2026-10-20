@@ -18,15 +18,31 @@ on:
         description: "The recomp-launcher version to build"
         type: string
         default: main
+      platforms:
+        description: "Which installers to build: any of windows, linux, macos"
+        type: string
+        default: windows linux macos
 
 jobs:
+  # the build matrix, cut down to the platforms the game's setup supports
+  plan:
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.m.outputs.matrix }}
+    steps:
+      - id: m
+        env:
+          PLATFORMS: ${{ inputs.platforms }}
+        run: |
+          all='[{"platform":"windows","os":"windows-2022","file":"windows-x64.exe","ldflags":"-H=windowsgui"},
+                {"platform":"linux","os":"ubuntu-24.04","file":"linux-x64"},
+                {"platform":"macos","os":"macos-14","file":"macos-arm64"}]'
+          echo "matrix=$(jq -c --arg p "$PLATFORMS" '{include: [.[] | select(.platform as $x | $p | split(" ") | index($x))]}' <<<"$all")" >> "$GITHUB_OUTPUT"
+
   build:
+    needs: plan
     strategy:
-      matrix:
-        include:
-          - { os: windows-2022, file: windows-x64.exe, ldflags: -H=windowsgui }
-          - { os: ubuntu-24.04, file: linux-x64 }
-          - { os: macos-14, file: macos-arm64 }
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     runs-on: ${{ matrix.os }}
     defaults:
       run:

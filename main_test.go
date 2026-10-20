@@ -62,6 +62,16 @@ func TestGameFolderAndLabels(t *testing.T) {
 	if !m.isGame(dir) || m.isGame("") {
 		t.Fatal("isGame")
 	}
+	iso := filepath.Join(t.TempDir(), "Games [USA]")
+	os.MkdirAll(filepath.Join(iso, "x.iso"), 0o755) // a folder named like one isn't one
+	m.Game.Files = []string{"*.iso"}
+	if m.isGame(iso) {
+		t.Fatal("a folder matched a file glob")
+	}
+	os.WriteFile(filepath.Join(iso, "Burnout 3 - Takedown (USA).ISO"), nil, 0o644)
+	if !m.isGame(iso) {
+		t.Fatal("*.iso missed an image in a folder with brackets in its path")
+	}
 	if got := playLabel("/x/Yuri's Revenge (recomp).cmd"); got != "Play Yuri's Revenge" {
 		t.Fatal(got)
 	}

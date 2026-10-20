@@ -2,6 +2,14 @@
 
 Versions follow [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- `game.files` takes globs: `*.iso` makes a folder holding a disc image the
+  game, for a title whose setup takes an image rather than an install.
+- `installer.yml` takes `platforms` (default `windows linux macos`), so a
+  Windows-only game doesn't publish installers that can't build it.
+
 ## [0.2.0] - 2026-10-19
 
 One installer per game instead of one launcher for every game.
