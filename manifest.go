@@ -20,7 +20,7 @@ type manifest struct {
 	Note   map[string]string `json:"note"`   // what the build needs and how long it takes, by GOOS or "default"
 	Game   struct {
 		Name     string   `json:"name"`
-		Files    []string `json:"files"`    // a folder holding all of these is the game
+		Files    []string `json:"files"`    // a folder holding all of these is the game; "a|b": either
 		Steam    string   `json:"steam"`    // its folder under steamapps/common
 		Registry []string `json:"registry"` // Windows: HKLM\key\value naming its folder
 	} `json:"game"`
@@ -66,7 +66,16 @@ func (m manifest) isGame(dir string) bool {
 // hasFile: dir holds a file named f, or one matching it when f is a glob
 // ("*.iso": a disc image whose name the player chose). The glob is matched
 // against the names, not the path, so a folder like "Games [USA]" is safe.
+// "a|b" is either: the game's folder or a zip or image of it.
 func hasFile(dir, f string) bool {
+	if alts := strings.Split(f, "|"); len(alts) > 1 {
+		for _, a := range alts {
+			if hasFile(dir, a) {
+				return true
+			}
+		}
+		return false
+	}
 	if !strings.ContainsAny(f, `*?[`) {
 		return fileExists(filepath.Join(dir, f))
 	}
