@@ -64,6 +64,19 @@ jobs:
           go-version-file: go.mod
       - if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install --yes libasound2-dev libgl1-mesa-dev xorg-dev
+      # Version info and a manifest in the exe. An unsigned exe with neither,
+      # that downloads code and runs PowerShell, is what antivirus heuristics
+      # flag (issue themepark-recomp#33); these make it look like what it is.
+      - if: runner.os == 'Windows'
+        run: |
+          go install github.com/tc-hib/go-winres@v0.3.3
+          title=$(jq -r .title game/launcher.json)
+          ver=0.0.0.0
+          case "$GITHUB_REF" in refs/tags/v*) v=${GITHUB_REF_NAME#v}; v=${v%%-*}; ver="$v.0" ;; esac
+          "$(go env GOPATH)/bin/go-winres" simply --arch amd64 --manifest gui --icon none \
+            --product-version "$ver" --file-version "$ver" --product-name "$title recomp" \
+            --file-description "$title recomp installer" --original-filename "$OUT" \
+            --copyright "recomp-launcher contributors"
       # the game repo's commit is the one the installer fetches and builds
       - run: go build -ldflags "-X main.commit=${{ github.sha }} ${{ matrix.ldflags }}" -o "out/$OUT" .
       # tar keeps the executable bit, which a plain download loses
@@ -111,5 +124,6 @@ jobs:
         # a tag with a hyphen (v0.1.0-alpha.1) is a pre-release
         run: |
           pre=; case "$GITHUB_REF_NAME" in *-*) pre=--prerelease ;; esac
+          (cd out && sha256sum -- * > SHA256SUMS.txt)   # so a download can be checked, and looked up
           gh release upload "$GITHUB_REF_NAME" out/* --clobber -R "$GITHUB_REPOSITORY" ||
             gh release create "$GITHUB_REF_NAME" out/* -R "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --generate-notes $pre
