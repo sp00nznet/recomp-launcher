@@ -124,10 +124,11 @@ func main() {
 	shots := flag.String("shots", "", "render each screen into this folder as a PNG, then quit")
 	now := flag.Bool("build", false, "start building at once (the game found or chosen before)")
 	flag.Parse()
+	defer guard()
+	note("start %s (%s)", os.Args[0], commit)
 	a, err := newApp()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		fatal(err)
 	}
 	a.shots = *shots
 	if *now {
@@ -138,8 +139,7 @@ func main() {
 	ebiten.SetWindowClosingHandled(true)
 	ebiten.SetTPS(30)
 	if err := ebiten.RunGame(a); err != nil && err != ebiten.Termination {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		fatal(err)
 	}
 }
 
