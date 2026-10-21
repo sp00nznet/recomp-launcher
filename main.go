@@ -374,7 +374,7 @@ func (a *App) cancel() {
 func (a *App) chooseGame() {
 	a.pickFolder("The folder "+a.m.Game.Name+" is installed in", func(p string) {
 		if !a.m.isGame(p) {
-			a.msg = "That folder has no " + strings.Join(a.m.Game.Files, " and ") + ". Pick the one the game is installed in."
+			a.msg = "That folder has no " + a.m.filesText() + ". Pick the one the game is installed in."
 			return
 		}
 		a.st.Game, a.found, a.msg = p, "Chosen by you", ""
@@ -686,7 +686,7 @@ func (a *App) drawStart(dst *ebiten.Image) {
 	} else {
 		a.dot(dst, 62, 167, warn)
 		a.text(dst, a.m.Game.Name+" was not found yet", 76, 156, 17, bold, ink)
-		a.text(dst, "Choose the folder it is installed in: the one with "+strings.Join(a.m.Game.Files, " and ")+".", 56, 190, 14, regular, dim)
+		a.text(dst, "Choose the folder it is installed in: the one with "+a.m.filesText()+".", 56, 190, 14, regular, dim)
 	}
 	a.button(dst, LW-56-170, 162, 170, 40, "Choose folder…", false, true, a.chooseGame)
 
