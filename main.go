@@ -355,7 +355,10 @@ func (a *App) finish(code int, logf *os.File) {
 	}
 	if logf != nil {
 		fmt.Fprintf(logf, "\n== exit code %d after %s\n", code, time.Since(a.start).Truncate(time.Second))
+		note("setup exit %d: %s (its output: %s)", code, a.reason, logf.Name())
 		logf.Close()
+	} else {
+		note("setup exit %d: %s", code, a.reason)
 	}
 }
 
