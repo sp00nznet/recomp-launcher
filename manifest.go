@@ -50,6 +50,25 @@ func perOS[T any](m map[string]T) T {
 
 func (m manifest) name() string { return path.Base(m.Repo) }
 
+// filesText: the game's files for a sentence. "a|b" reads "a or b", and
+// spellings that differ only in case ("GAME/MAIN.EXE|game/main.exe", for
+// Linux installs) are shown once.
+func (m manifest) filesText() string {
+	var all []string
+	for _, f := range m.Game.Files {
+		var alts []string
+		seen := map[string]bool{}
+		for _, a := range strings.Split(f, "|") {
+			if k := strings.ToLower(a); !seen[k] {
+				seen[k] = true
+				alts = append(alts, a)
+			}
+		}
+		all = append(all, strings.Join(alts, " or "))
+	}
+	return strings.Join(all, " and ")
+}
+
 // isGame: dir holds every one of the game's files.
 func (m manifest) isGame(dir string) bool {
 	if dir == "" {

@@ -95,3 +95,11 @@ func TestGameFolderAndLabels(t *testing.T) {
 		t.Fatalf("game/launcher.json: %v %+v", err, gm)
 	}
 }
+
+func TestFilesTextReadsAlternatives(t *testing.T) {
+	m := manifest{}
+	m.Game.Files = []string{"GAME/MAIN.EXE|game/main.exe|setup_*.exe", "a.dat"}
+	if got, want := m.filesText(), "GAME/MAIN.EXE or setup_*.exe and a.dat"; got != want {
+		t.Fatalf("filesText = %q, want %q", got, want)
+	}
+}
