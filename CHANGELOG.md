@@ -4,6 +4,8 @@ Versions follow [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-21
+
 ### Added
 - The installer shows its version (the game's tag, or the short commit for a
   build off a branch) in the window's corner and title, and on start asks
@@ -15,6 +17,11 @@ Versions follow [SemVer](https://semver.org/).
   Windows-only game doesn't publish installers that can't build it.
 - A `game.files` entry may be alternatives, `a|b`: `HOVER.EXE|hover*.zip` is
   the game's folder or a folder holding a zip of it.
+
+- The Windows installer carries version info and a manifest, and a release
+  has `SHA256SUMS.txt`, so antivirus heuristics and players can check it.
+- A log of why the installer stopped (`%APPDATA%ecomp-launcher\launcher.log`
+  on Windows), and an error box instead of the window vanishing.
 
 ### Fixed
 - On Windows a step line after a blank line was glued to the line before it
