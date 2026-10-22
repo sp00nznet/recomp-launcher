@@ -20,8 +20,7 @@ Versions follow [SemVer](https://semver.org/).
 
 - The Windows installer carries version info and a manifest, and a release
   has `SHA256SUMS.txt`, so antivirus heuristics and players can check it.
-- A log of why the installer stopped (`%APPDATA%
-ecomp-launcher\launcher.log`
+- A log of why the installer stopped (`%APPDATA%\recomp-launcher\launcher.log`
   on Windows), and an error box instead of the window vanishing.
 
 ### Fixed
