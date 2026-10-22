@@ -4,6 +4,15 @@ Versions follow [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-22
+
+### Added
+- Pick-your-own builds: a `choices` list in `launcher.json` puts a screen of
+  checkboxes between the start screen and the build, and the ticked ids reach
+  the setup as `{choices}`. What was ticked is remembered for next time. For
+  a game that builds for many systems (skifree's consoles), only what the
+  player picks is built, so only its toolchain is downloaded.
+
 ## [0.3.0] - 2026-10-21
 
 ### Added

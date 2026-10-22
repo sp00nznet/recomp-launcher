@@ -46,6 +46,7 @@ In the game's repo:
    | `sources` | More repos the setup expects beside the game's (`{"repo", "ref", "dir"}`), its toolkit |
    | `setup` | The setup command by OS or `default`; `{game}` is the game's folder. It should install what's missing without asking. |
    | `play` | A glob for the launchers the setup leaves in the repo's root |
+   | `choices` | Optional, pick-your-own: `[{"id", "label", "note"}]`. Build first shows a box per choice; the ticked ids reach `setup` as `{choices}`, comma-separated (skifree's consoles installer lists its consoles here, so only the toolchains picked are downloaded) |
 
 2. The setup prints each step as `[n/N] What it's doing` (for the bar), ends
    a failure with `Setup stopped: <why>`, exits non-zero on failure, and

@@ -27,6 +27,28 @@ type manifest struct {
 	Sources []source            `json:"sources"` // more repos the setup expects beside the game's (its toolkit)
 	Setup   map[string][]string `json:"setup"`   // the setup command by GOOS or "default"; {game} is the game folder
 	Play    string              `json:"play"`    // a glob for the launchers the setup leaves in the repo's root
+	Choices []choice            `json:"choices"` // pick-your-own: the ticked ids reach the setup as {choices}, comma-separated
+}
+
+// choice is one thing the player may tick before building (a console, say).
+type choice struct {
+	ID    string `json:"id"`
+	Label string `json:"label"`
+	Note  string `json:"note"` // a few words under the label: its size, what it runs on
+}
+
+// picked: the ids the player ticked that the manifest still offers, in its order.
+func (m manifest) picked(ticked []string) []string {
+	var ids []string
+	for _, c := range m.Choices {
+		for _, t := range ticked {
+			if t == c.ID {
+				ids = append(ids, c.ID)
+				break
+			}
+		}
+	}
+	return ids
 }
 
 type source struct {

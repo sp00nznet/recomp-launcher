@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -75,13 +76,15 @@ const (
 	scWork
 	scDone
 	scFail
+	scChoose // pick-your-own (manifest choices): what to build
 )
 
 // state is what the player chose and built, kept in the OS's config folder.
 type state struct {
-	Root  string `json:"root"`  // the game's repo and its toolkit go in here
-	Game  string `json:"game"`  // the game's folder
-	Built string `json:"built"` // the commit last built
+	Root   string   `json:"root"`   // the game's repo and its toolkit go in here
+	Game   string   `json:"game"`   // the game's folder
+	Built  string   `json:"built"`  // the commit last built
+	Picked []string `json:"picked"` // the choices ticked, when the manifest has them
 }
 
 type hit struct {
@@ -268,6 +271,7 @@ func (a *App) runBuild(logf *os.File) int {
 	argv := append([]string(nil), perOS(a.m.Setup)...)
 	for i := range argv {
 		argv[i] = strings.ReplaceAll(argv[i], "{game}", a.st.Game)
+		argv[i] = strings.ReplaceAll(argv[i], "{choices}", strings.Join(a.m.picked(a.st.Picked), ","))
 	}
 	if len(argv) == 0 {
 		a.setReason("This installer has no setup command for " + runtime.GOOS + ".")
@@ -685,6 +689,8 @@ func (a *App) Draw(dst *ebiten.Image) {
 		a.drawDone(dst)
 	case scFail:
 		a.drawFail(dst)
+	case scChoose:
+		a.drawChoose(dst)
 	}
 	a.mu.Unlock()
 	if a.msg != "" {
@@ -724,7 +730,76 @@ func (a *App) drawStart(dst *ebiten.Image) {
 		y += 22
 	}
 	a.text(dst, "Nothing from the game is downloaded or shared.", 36, 506, 13, regular, dim)
-	a.button(dst, LW-36-230, 478, 230, 54, "Build my recomp", true, a.m.isGame(a.st.Game), a.build)
+	if len(a.m.Choices) > 0 {
+		a.button(dst, LW-36-230, 478, 230, 54, "Choose what to build", true, a.m.isGame(a.st.Game), func() { a.scr = scChoose })
+	} else {
+		a.button(dst, LW-36-230, 478, 230, 54, "Build my recomp", true, a.m.isGame(a.st.Game), a.build)
+	}
+}
+
+// drawChoose: a box per choice, three to a row. Only what's ticked is built,
+// so only its toolchain is downloaded.
+func (a *App) drawChoose(dst *ebiten.Image) {
+	a.text(dst, "What to build", 36, 116, 24, bold, ink)
+	a.text(dst, "Tick what you want. Each downloads its own toolchain the first time, so fewer is faster.", 36, 150, 14, regular, dim)
+	const cols, cw, ch = 3, 266.0, 56.0
+	for i, c := range a.m.Choices {
+		x, y := 36+float64(i%cols)*(cw+11), 180+float64(i/cols)*(ch+8)
+		on := slices.Contains(a.st.Picked, c.ID)
+		r := image.Rect(int(x), int(y), int(x+cw), int(y+ch))
+		cx, cy := ebiten.CursorPosition()
+		bgc := panel
+		if image.Pt(int(float64(cx)/a.k), int(float64(cy)/a.k)).In(r) {
+			bgc, a.hover = lighten(panel, 12), true
+		}
+		a.round(dst, x, y, cw, ch, 8, bgc)
+		bx, by := x+14, y+(ch-22)/2
+		if on {
+			a.round(dst, bx, by, 22, 22, 5, a.accent)
+			k := float32(a.k)
+			vector.StrokeLine(dst, float32(bx+5)*k, float32(by+11)*k, float32(bx+10)*k, float32(by+16)*k, 2.5*k, rgb(0xffffff), true)
+			vector.StrokeLine(dst, float32(bx+10)*k, float32(by+16)*k, float32(bx+17)*k, float32(by+6)*k, 2.5*k, rgb(0xffffff), true)
+		} else {
+			a.round(dst, bx, by, 22, 22, 5, edge)
+		}
+		ty := y + 10
+		if c.Note == "" {
+			ty = y + (ch-16*1.25)/2
+		}
+		a.text(dst, a.fit(c.Label, 16, bold, cw-60), x+48, ty, 16, bold, ink)
+		if c.Note != "" {
+			a.text(dst, a.fit(c.Note, 12, regular, cw-60), x+48, y+32, 12, regular, dim)
+		}
+		id := c.ID
+		a.nextHits = append(a.nextHits, hit{r, func() { a.toggle(id) }})
+	}
+	n := len(a.m.picked(a.st.Picked))
+	a.button(dst, 36, 518, 160, 40, "Back", false, true, func() { a.scr = scStart })
+	all := "Select all"
+	if n == len(a.m.Choices) {
+		all = "Select none"
+	}
+	a.button(dst, 208, 518, 160, 40, all, false, true, func() {
+		a.st.Picked = nil
+		if all == "Select all" {
+			for _, c := range a.m.Choices {
+				a.st.Picked = append(a.st.Picked, c.ID)
+			}
+		}
+	})
+	label := "Build"
+	if n > 0 {
+		label = fmt.Sprintf("Build %d", n)
+	}
+	a.button(dst, LW-36-200, 510, 200, 54, label, true, n > 0, a.build)
+}
+
+func (a *App) toggle(id string) {
+	if i := slices.Index(a.st.Picked, id); i >= 0 {
+		a.st.Picked = slices.Delete(a.st.Picked, i, i+1)
+	} else {
+		a.st.Picked = append(a.st.Picked, id)
+	}
 }
 
 func (a *App) drawWork(dst *ebiten.Image) {
@@ -788,7 +863,7 @@ func (a *App) drawDone(dst *ebiten.Image) {
 	if a.st.Built != "" && a.st.Built != commit {
 		rebuild = "Update to this version"
 	}
-	a.button(dst, x, y, 250, 42, rebuild, false, true, func() { a.scr = scStart })
+	a.button(dst, x, y, 250, 42, rebuild, false, true, func() { a.scr = scStart }) // Start leads to the choices again
 	a.text(dst, "In the game: F11 is fullscreen, F12 changes the scaling.", 36, 506, 14, regular, dim)
 }
 
@@ -851,6 +926,17 @@ func (a *App) shotScene() {
 	case 4:
 		a.scr = scDone
 		a.launchers = []string{filepath.Join(a.repoDir(), "Yuri's Revenge (recomp).cmd"), filepath.Join(a.repoDir(), "Red Alert 2 (recomp).cmd")}
+	case 6:
+		if len(a.m.Choices) == 0 {
+			a.quitting = true
+			return
+		}
+		a.scr, a.st.Picked = scChoose, nil
+		for i, c := range a.m.Choices {
+			if i%4 == 0 {
+				a.st.Picked = append(a.st.Picked, c.ID)
+			}
+		}
 	case 5:
 		a.scr, a.logPath = scFail, "x"
 		a.reason = "the Visual Studio Build Tools did not install. Install them with 'Desktop development with C++', then run Setup.cmd again."
