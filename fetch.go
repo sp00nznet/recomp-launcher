@@ -2,12 +2,14 @@ package main
 
 import (
 	"archive/zip"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 // fetch puts repo at ref into dest from GitHub's zip of it, so the player
@@ -92,4 +94,40 @@ func extract(f *zip.File, p string, mode os.FileMode) error {
 		return err
 	}
 	return os.Chmod(p, mode) // an existing file keeps its old mode otherwise
+}
+
+// newer reads GitHub's release list (newest first, pre-releases included)
+// and gives the newest release's tag and page when it isn't version.
+func newer(list []byte, version string) (tag, url string) {
+	var rs []struct {
+		Tag   string `json:"tag_name"`
+		URL   string `json:"html_url"`
+		Draft bool   `json:"draft"`
+	}
+	json.Unmarshal(list, &rs)
+	for _, r := range rs {
+		if !r.Draft {
+			if r.Tag != version {
+				return r.Tag, r.URL
+			}
+			break
+		}
+	}
+	return "", ""
+}
+
+// latest asks GitHub for repo's newest release; offline or rate-limited, it
+// says nothing. /releases/latest skips pre-releases, and alphas are all we have.
+func latest(repo, version string) (tag, url string) {
+	c := http.Client{Timeout: 5 * time.Second}
+	resp, err := c.Get("https://api.github.com/repos/" + repo + "/releases?per_page=5")
+	if err != nil {
+		return "", ""
+	}
+	defer resp.Body.Close()
+	b, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != 200 {
+		return "", ""
+	}
+	return newer(b, version)
 }

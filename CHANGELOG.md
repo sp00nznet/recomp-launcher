@@ -5,6 +5,10 @@ Versions follow [SemVer](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- The installer shows its version (the game's tag, or the short commit for a
+  build off a branch) in the window's corner and title, and on start asks
+  GitHub for the game's newest release: a newer one gets a download button.
+  Offline it says nothing.
 - `game.files` takes globs: `*.iso` makes a folder holding a disc image the
   game, for a title whose setup takes an image rather than an install.
 - `installer.yml` takes `platforms` (default `windows linux macos`), so a

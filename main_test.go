@@ -103,3 +103,16 @@ func TestFilesTextReadsAlternatives(t *testing.T) {
 		t.Fatalf("filesText = %q, want %q", got, want)
 	}
 }
+
+func TestNewerSkipsDraftsAndKnowsItsOwn(t *testing.T) {
+	list := []byte(`[{"tag_name":"v0.4","draft":true},{"tag_name":"v0.3","html_url":"u3"},{"tag_name":"v0.2"}]`)
+	if tag, url := newer(list, "v0.2"); tag != "v0.3" || url != "u3" {
+		t.Fatal(tag, url)
+	}
+	if tag, _ := newer(list, "v0.3"); tag != "" {
+		t.Fatal(tag)
+	}
+	if tag, _ := newer([]byte(`{"message":"rate limited"}`), "v0.3"); tag != "" {
+		t.Fatal(tag)
+	}
+}
