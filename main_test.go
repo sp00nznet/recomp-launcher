@@ -116,3 +116,14 @@ func TestNewerSkipsDraftsAndKnowsItsOwn(t *testing.T) {
 		t.Fatal(tag)
 	}
 }
+
+func TestPickedKeepsManifestOrderAndDropsUnknown(t *testing.T) {
+	m, err := loadManifest([]byte(`{"choices": [{"id": "psp"}, {"id": "vita"}, {"id": "dreamcast"}]}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := m.picked([]string{"dreamcast", "gone", "psp"})
+	if len(got) != 2 || got[0] != "psp" || got[1] != "dreamcast" {
+		t.Fatalf("picked = %v, want [psp dreamcast]", got)
+	}
+}
