@@ -48,6 +48,10 @@ var gameFS embed.FS
 // commit is the game repo's commit this installer fetches (-ldflags "-X main.commit=<sha>").
 var commit = "main"
 
+// version is the game release this installer is (its tag, v0.1.0-alpha.3),
+// or the short commit for a build off a branch (-ldflags "-X main.version=...").
+var version = "dev"
+
 var windows = runtime.GOOS == "windows"
 
 var (
@@ -112,6 +116,8 @@ type App struct {
 	pid       int
 	reason    string
 	logPath   string
+	newTag    string // a newer release than version, and its page
+	newURL    string
 	later     []func()
 	launchers []string
 
@@ -125,7 +131,7 @@ func main() {
 	now := flag.Bool("build", false, "start building at once (the game found or chosen before)")
 	flag.Parse()
 	defer guard()
-	note("start %s (%s)", os.Args[0], commit)
+	note("start %s %s (%s)", os.Args[0], version, commit)
 	a, err := newApp()
 	if err != nil {
 		fatal(err)
@@ -134,7 +140,15 @@ func main() {
 	if *now {
 		a.build()
 	}
-	ebiten.SetWindowTitle(a.m.Title + " — recomp installer")
+	if strings.HasPrefix(version, "v") && a.shots == "" { // a branch build is newer than any release
+		go func() {
+			tag, url := latest(a.m.Repo, version)
+			a.mu.Lock()
+			a.newTag, a.newURL = tag, url
+			a.mu.Unlock()
+		}()
+	}
+	ebiten.SetWindowTitle(a.m.Title + " — recomp installer " + version)
 	ebiten.SetWindowSize(LW, LH)
 	ebiten.SetWindowClosingHandled(true)
 	ebiten.SetTPS(30)
@@ -655,7 +669,13 @@ func (a *App) Draw(dst *ebiten.Image) {
 	a.text(dst, a.m.Title, 36, 20, 28, bold, ink)
 	a.text(dst, "Recompiled for your computer, from your own copy of the game", 36, 58, 15, regular, dim)
 
+	a.text(dst, version, LW-36-a.width(version, 13, mono), 26, 13, mono, dim)
 	a.mu.Lock()
+	if a.newTag != "" {
+		l := a.newTag + " is out: download"
+		w := a.width(l, 15, regular) + 32
+		a.button(dst, LW-36-w, 50, w, 30, l, false, true, func() { open(a.newURL) })
+	}
 	switch a.scr {
 	case scStart:
 		a.drawStart(dst)

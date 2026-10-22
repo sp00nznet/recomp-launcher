@@ -78,7 +78,10 @@ jobs:
             --file-description "$title recomp installer" --original-filename "$OUT" \
             --copyright "recomp-launcher contributors"
       # the game repo's commit is the one the installer fetches and builds
-      - run: go build -ldflags "-X main.commit=${{ github.sha }} ${{ matrix.ldflags }}" -o "out/$OUT" .
+      # and the tag, or the short commit off a branch, is the version it shows
+      - run: |
+          v=${GITHUB_SHA::7}; case "$GITHUB_REF" in refs/tags/v*) v=$GITHUB_REF_NAME ;; esac
+          go build -ldflags "-X main.commit=${{ github.sha }} -X main.version=$v ${{ matrix.ldflags }}" -o "out/$OUT" .
       # tar keeps the executable bit, which a plain download loses
       - if: runner.os == 'Linux'
         run: tar -C out -czf "out/$OUT.tar.gz" "$OUT" && rm "out/$OUT"
