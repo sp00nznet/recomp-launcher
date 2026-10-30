@@ -18,6 +18,10 @@ on:
         description: "The recomp-launcher version to build"
         type: string
         default: main
+      all:
+        description: "The all-games launcher (catalog.json) instead of one game's installer"
+        type: boolean
+        default: false
       platforms:
         description: "Which installers to build: any of windows, linux, macos"
         type: string
@@ -54,11 +58,13 @@ jobs:
         with:
           repository: sp00nznet/recomp-launcher
           ref: ${{ inputs.launcher-ref }}
-      - uses: actions/checkout@v4
+      - if: ${{ !inputs.all }}
+        uses: actions/checkout@v4
         with:
           path: _game
           sparse-checkout: ${{ inputs.manifest }}
-      - run: rm -rf game && cp -r "_game/${{ inputs.manifest }}" game
+      - if: ${{ !inputs.all }}
+        run: rm -rf game && cp -r "_game/${{ inputs.manifest }}" game
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
@@ -70,7 +76,7 @@ jobs:
       - if: runner.os == 'Windows'
         run: |
           go install github.com/tc-hib/go-winres@v0.3.3
-          title=$(jq -r .title game/launcher.json)
+          title=$(jq -r .title game/launcher.json); [ "${{ inputs.all }}" = true ] && title="sp00nznet"
           ver=0.0.0.0
           case "$GITHUB_REF" in refs/tags/v*) v=${GITHUB_REF_NAME#v}; v=${v%%-*}; ver="$v.0" ;; esac
           "$(go env GOPATH)/bin/go-winres" simply --arch amd64 --manifest gui --icon none \
@@ -81,7 +87,7 @@ jobs:
       # and the tag, or the short commit off a branch, is the version it shows
       - run: |
           v=${GITHUB_SHA::7}; case "$GITHUB_REF" in refs/tags/v*) v=$GITHUB_REF_NAME ;; esac
-          go build -ldflags "-X main.commit=${{ github.sha }} -X main.version=$v ${{ matrix.ldflags }}" -o "out/$OUT" .
+          go build -ldflags "-X main.commit=${{ github.sha }} -X main.version=$v -X main.all=${{ inputs.all }} ${{ matrix.ldflags }}" -o "out/$OUT" .
       # tar keeps the executable bit, which a plain download loses
       - if: runner.os == 'Linux'
         run: tar -C out -czf "out/$OUT.tar.gz" "$OUT" && rm "out/$OUT"

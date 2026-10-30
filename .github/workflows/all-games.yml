@@ -1,0 +1,11 @@
+# The all-games launcher: every game in catalog.json, one download.
+# A v* tag here puts it on that tag's release.
+name: all-games
+
+on:
+  push: { branches: [main], tags: ["v*"] }
+permissions: { contents: write }
+jobs:
+  launcher:
+    uses: ./.github/workflows/installer.yml
+    with: { name: Recomp-Launcher, all: true, launcher-ref: "${{ github.sha }}" }

@@ -69,6 +69,20 @@ In the game's repo:
    A game whose setup runs on fewer systems adds `platforms: windows` (any of
    `windows linux macos`) to `with:`.
 
+## The all-games launcher
+
+The same program built with `-X main.all=true` (or run with `--all`) opens on
+a list of every game in [catalog.json](catalog.json). Picking one fetches that
+game's `launcher/launcher.json` at its newest release tag, and from there it
+is that game's installer: your copy, then its outputs (`choices`: PC, Android,
+a console...), then Build. Nothing is downloaded until a game is picked, and
+only the toolchains for the outputs ticked. A `v*` tag here puts it on the
+release ([all-games.yml](.github/workflows/all-games.yml)).
+
+A game joins the list with a line in `catalog.json` once it has a release
+carrying `launcher/launcher.json`. A game with more than one output lists
+them as `choices` so the player picks.
+
 ## Building and trying it
 
 ```
