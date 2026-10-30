@@ -1,118 +1,147 @@
 [
  {
   "repo": "sp00nznet/blakestone",
-  "title": "Blake Stone"
+  "title": "Blake Stone",
+  "platform": "PC"
  },
  {
   "repo": "sp00nznet/burnout3",
-  "title": "Burnout 3: Takedown"
+  "title": "Burnout 3: Takedown",
+  "platform": "Xbox"
  },
  {
   "repo": "sp00nznet/diddykongracing",
-  "title": "Diddy Kong Racing"
+  "title": "Diddy Kong Racing",
+  "platform": "N64"
  },
  {
   "repo": "sp00nznet/ejay",
-  "title": "eJay 2"
+  "title": "eJay 2",
+  "platform": "PC"
  },
  {
   "repo": "sp00nznet/encarta",
-  "title": "Encarta 97"
+  "title": "Encarta 97",
+  "platform": "PC"
  },
  {
   "repo": "sp00nznet/epicpinball",
-  "title": "Epic Pinball"
+  "title": "Epic Pinball",
+  "platform": "PC"
  },
  {
   "repo": "sp00nznet/gunman",
-  "title": "Gunman Chronicles"
+  "title": "Gunman Chronicles",
+  "platform": "PC"
  },
  {
   "repo": "sp00nznet/hotd-recomp",
-  "title": "The House of the Dead"
+  "title": "The House of the Dead",
+  "platform": "PC"
  },
  {
   "repo": "sp00nznet/hover",
-  "title": "Hover!"
+  "title": "Hover!",
+  "platform": "PC"
  },
  {
   "repo": "sp00nznet/LinksAwakening",
-  "title": "Link's Awakening DX"
+  "title": "Link's Awakening DX",
+  "platform": "Game Boy Color"
  },
  {
   "repo": "sp00nznet/linksawakening-portable",
-  "title": "Link's Awakening (consoles)"
+  "title": "Link's Awakening (consoles)",
+  "platform": "Game Boy Color"
  },
  {
   "repo": "sp00nznet/mcg-recomp",
-  "title": "MechCommander Gold"
+  "title": "MechCommander Gold",
+  "platform": "PC"
  },
  {
   "repo": "sp00nznet/metalslug",
-  "title": "Metal Slug"
+  "title": "Metal Slug",
+  "platform": "Neo Geo"
  },
  {
   "repo": "sp00nznet/neodriftout",
-  "title": "Neo Drift Out"
+  "title": "Neo Drift Out",
+  "platform": "Neo Geo"
  },
  {
   "repo": "sp00nznet/Rampage",
-  "title": "Rampage World Tour & 2"
+  "title": "Rampage World Tour & 2",
+  "platform": "N64"
  },
  {
   "repo": "sp00nznet/redalert2-recomp",
-  "title": "Red Alert 2 & Yuri's Revenge"
+  "title": "Red Alert 2 & Yuri's Revenge",
+  "platform": "PC"
  },
  {
   "repo": "sp00nznet/rol",
-  "title": "Rise of Nations: Rise of Legends"
+  "title": "Rise of Nations: Rise of Legends",
+  "platform": "PC"
  },
  {
   "repo": "sp00nznet/simcity2000",
-  "title": "SimCity 2000"
+  "title": "SimCity 2000",
+  "platform": "PC"
  },
  {
   "repo": "sp00nznet/simcity4",
-  "title": "SimCity 4 Deluxe"
+  "title": "SimCity 4 Deluxe",
+  "platform": "PC"
  },
  {
   "repo": "sp00nznet/virtualspringfield",
-  "title": "The Simpsons: Virtual Springfield"
+  "title": "The Simpsons: Virtual Springfield",
+  "platform": "PC"
  },
  {
   "repo": "sp00nznet/skifree",
-  "title": "SkiFree"
+  "title": "SkiFree",
+  "platform": "PC"
  },
  {
   "repo": "sp00nznet/racer",
-  "title": "Star Wars Episode I: Racer"
+  "title": "Star Wars Episode I: Racer",
+  "platform": "N64"
  },
  {
   "repo": "sp00nznet/kotor-recomp",
-  "title": "Star Wars: KOTOR"
+  "title": "Star Wars: KOTOR",
+  "platform": "PC"
  },
  {
   "repo": "sp00nznet/rogue-squadron-recomp",
-  "title": "Star Wars: Rogue Squadron 3D"
+  "title": "Star Wars: Rogue Squadron 3D",
+  "platform": "PC"
  },
  {
   "repo": "sp00nznet/shadows-recomp",
-  "title": "Shadows of the Empire"
+  "title": "Shadows of the Empire",
+  "platform": "PC"
  },
  {
   "repo": "sp00nznet/themepark-recomp",
-  "title": "Theme Park"
+  "title": "Theme Park",
+  "platform": "PC"
  },
  {
   "repo": "sp00nznet/tiberiansun-recomp",
-  "title": "Tiberian Sun & Firestorm"
+  "title": "Tiberian Sun & Firestorm",
+  "platform": "PC"
  },
  {
   "repo": "sp00nznet/ut99-recomp",
-  "title": "Unreal Tournament"
+  "title": "Unreal Tournament",
+  "platform": "PC"
  },
  {
   "repo": "sp00nznet/vig8",
-  "title": "Vigilante 8 Arcade"
+  "title": "Vigilante 8 Arcade",
+  "platform": "Xbox 360"
  }
 ]

@@ -85,7 +85,7 @@ a console...), then Build. Nothing is downloaded until a game is picked, and
 only the toolchains for the outputs ticked. A `v*` tag here puts it on the
 release ([all-games.yml](.github/workflows/all-games.yml)).
 
-A game joins the list with a line in `catalog.json` once it has a release
+A game joins the list (and its platform's tab) with a line in `catalog.json`, `{repo, title, platform}`, once it has a release
 carrying `launcher/launcher.json`. A game with more than one output lists
 them as `choices` so the player picks.
 

@@ -131,6 +131,7 @@ type App struct {
 
 	games   []entry // the all-games launcher's list; nil in a game's own installer
 	isBuilt []bool
+	plat    string // the platform tab picked; "" is every game
 }
 
 func main() {

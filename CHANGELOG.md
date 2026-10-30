@@ -4,6 +4,12 @@ Versions follow [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-30
+
+### Added
+- The game list has a tab per platform (PC, N64, Xbox 360...); each game in
+  `catalog.json` has a `platform`.
+
 ## [0.5.0] - 2026-10-30
 
 ### Added
