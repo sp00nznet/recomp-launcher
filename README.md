@@ -15,6 +15,12 @@ Each game repo builds its own installer from this one, with a
 3. **Plays**: a **Play** button for each launcher the setup left, and
    desktop shortcuts on request. Opened again later, it starts here.
 
+| Pick a game (the all-games launcher) | Your copy | What to build |
+|---|---|---|
+| ![](docs/pick.png) | ![](docs/start.png) | ![](docs/choose.png) |
+| **Building** | **Play** | |
+| ![](docs/build.png) | ![](docs/play.png) | |
+
 If the setup stops, it shows the script's own one-sentence reason and its
 last lines, with **Try again**.
 
