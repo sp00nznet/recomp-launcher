@@ -77,6 +77,7 @@ const (
 	scDone
 	scFail
 	scChoose // pick-your-own (manifest choices): what to build
+	scPick   // the all-games launcher: which game
 )
 
 // state is what the player chose and built, kept in the OS's config folder.
@@ -127,15 +128,19 @@ type App struct {
 	shots    string // --shots: render each screen to a PNG there and quit
 	shotN    int
 	quitting bool
+
+	games   []entry // the all-games launcher's list; nil in a game's own installer
+	isBuilt []bool
 }
 
 func main() {
 	shots := flag.String("shots", "", "render each screen into this folder as a PNG, then quit")
 	now := flag.Bool("build", false, "start building at once (the game found or chosen before)")
+	allFlag := flag.Bool("all", all == "true", "the all-games launcher: open on the list of games")
 	flag.Parse()
 	defer guard()
 	note("start %s %s (%s)", os.Args[0], version, commit)
-	a, err := newApp()
+	a, err := newApp(*allFlag)
 	if err != nil {
 		fatal(err)
 	}
@@ -143,7 +148,7 @@ func main() {
 	if *now {
 		a.build()
 	}
-	if strings.HasPrefix(version, "v") && a.shots == "" { // a branch build is newer than any release
+	if strings.HasPrefix(version, "v") && a.shots == "" && a.games == nil { // a branch build is newer than any release
 		go func() {
 			tag, url := latest(a.m.Repo, version)
 			a.mu.Lock()
@@ -151,7 +156,11 @@ func main() {
 			a.mu.Unlock()
 		}()
 	}
-	ebiten.SetWindowTitle(a.m.Title + " — recomp installer " + version)
+	if a.games != nil {
+		ebiten.SetWindowTitle("Recomp launcher " + version)
+	} else {
+		ebiten.SetWindowTitle(a.m.Title + " — recomp installer " + version)
+	}
 	ebiten.SetWindowSize(LW, LH)
 	ebiten.SetWindowClosingHandled(true)
 	ebiten.SetTPS(30)
@@ -160,19 +169,9 @@ func main() {
 	}
 }
 
-func newApp() (*App, error) {
-	b, err := gameFS.ReadFile("game/launcher.json")
-	if err != nil {
-		return nil, err
-	}
-	m, err := loadManifest(b)
-	if err != nil {
-		return nil, fmt.Errorf("launcher.json: %w", err)
-	}
-	a := &App{m: m, lines: []string{""}, faces: map[[2]int]*text.GoTextFace{}, accent: rgb(0xd0342c)}
-	if v, err := strconv.ParseUint(strings.TrimPrefix(m.Accent, "#"), 16, 32); err == nil {
-		a.accent = rgb(uint32(v))
-	}
+func newApp(allGames bool) (*App, error) {
+	a := &App{lines: []string{""}, faces: map[[2]int]*text.GoTextFace{}, accent: rgb(0xd0342c)}
+	var err error
 	for i, ttf := range [][]byte{goregular.TTF, gobold.TTF, gomono.TTF} {
 		if a.srcs[i], err = text.NewGoTextFaceSource(bytes.NewReader(ttf)); err != nil {
 			return nil, err
@@ -182,7 +181,32 @@ func newApp() (*App, error) {
 	if runtime.GOOS == "darwin" {     // an app opened from Finder has no shell's PATH: Homebrew isn't on it
 		os.Setenv("PATH", "/opt/homebrew/bin:/usr/local/bin:"+os.Getenv("PATH"))
 	}
+	if allGames {
+		if a.games, err = loadCatalog(); err != nil {
+			return nil, fmt.Errorf("catalog.json: %w", err)
+		}
+		a.isBuilt = make([]bool, len(a.games))
+		a.toPicker()
+		return a, nil
+	}
+	b, err := gameFS.ReadFile("game/launcher.json")
+	if err != nil {
+		return nil, err
+	}
+	m, err := loadManifest(b)
+	if err != nil {
+		return nil, fmt.Errorf("launcher.json: %w", err)
+	}
+	a.load(m)
+	return a, nil
+}
 
+// load makes the installer m's: its colour, where it was built, the game's folder.
+func (a *App) load(m manifest) {
+	a.m, a.scr, a.st = m, scStart, state{}
+	if v, err := strconv.ParseUint(strings.TrimPrefix(m.Accent, "#"), 16, 32); err == nil {
+		a.accent = rgb(uint32(v))
+	}
 	d, err := os.UserConfigDir()
 	if err != nil {
 		d = home()
@@ -204,7 +228,6 @@ func newApp() (*App, error) {
 	if len(a.launchers) > 0 {
 		a.scr = scDone
 	}
-	return a, nil
 }
 
 func (a *App) repoDir() string { return filepath.Join(a.st.Root, a.m.name()) }
@@ -670,7 +693,11 @@ func (a *App) Draw(dst *ebiten.Image) {
 	dst.Fill(bg)
 	a.rect(dst, 0, 0, LW, 96, rgb(0x0b0e14))
 	a.rect(dst, 0, 92, LW, 4, a.accent)
-	a.text(dst, a.m.Title, 36, 20, 28, bold, ink)
+	title := a.m.Title
+	if title == "" {
+		title = "sp00nznet recomps"
+	}
+	a.text(dst, title, 36, 20, 28, bold, ink)
 	a.text(dst, "Recompiled for your computer, from your own copy of the game", 36, 58, 15, regular, dim)
 
 	a.text(dst, version, LW-36-a.width(version, 13, mono), 26, 13, mono, dim)
@@ -679,6 +706,9 @@ func (a *App) Draw(dst *ebiten.Image) {
 		l := a.newTag + " is out: download"
 		w := a.width(l, 15, regular) + 32
 		a.button(dst, LW-36-w, 50, w, 30, l, false, true, func() { open(a.newURL) })
+	}
+	if a.games != nil && a.scr != scPick && a.scr != scWork {
+		a.button(dst, LW-36-130, 50, 130, 30, "All games", false, true, a.toPicker)
 	}
 	switch a.scr {
 	case scStart:
@@ -691,6 +721,8 @@ func (a *App) Draw(dst *ebiten.Image) {
 		a.drawFail(dst)
 	case scChoose:
 		a.drawChoose(dst)
+	case scPick:
+		a.drawPick(dst)
 	}
 	a.mu.Unlock()
 	if a.msg != "" {
@@ -898,6 +930,10 @@ func (a *App) drawFail(dst *ebiten.Image) {
 // shotScene sets up the scene for the next picture: every screen, with made-up output.
 func (a *App) shotScene() {
 	if a.frame%8 != 1 {
+		return
+	}
+	if a.scr == scPick { // the all-games list is its one picture
+		a.quitting = a.shotN > 0
 		return
 	}
 	a.mu.Lock()

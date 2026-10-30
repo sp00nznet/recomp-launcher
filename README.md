@@ -15,6 +15,12 @@ Each game repo builds its own installer from this one, with a
 3. **Plays**: a **Play** button for each launcher the setup left, and
    desktop shortcuts on request. Opened again later, it starts here.
 
+| Pick a game (the all-games launcher) | Your copy | What to build |
+|---|---|---|
+| ![](docs/pick.png) | ![](docs/start.png) | ![](docs/choose.png) |
+| **Building** | **Play** | |
+| ![](docs/build.png) | ![](docs/play.png) | |
+
 If the setup stops, it shows the script's own one-sentence reason and its
 last lines, with **Try again**.
 
@@ -68,6 +74,20 @@ In the game's repo:
    on its release.
    A game whose setup runs on fewer systems adds `platforms: windows` (any of
    `windows linux macos`) to `with:`.
+
+## The all-games launcher
+
+The same program built with `-X main.all=true` (or run with `--all`) opens on
+a list of every game in [catalog.json](catalog.json). Picking one fetches that
+game's `launcher/launcher.json` at its newest release tag, and from there it
+is that game's installer: your copy, then its outputs (`choices`: PC, Android,
+a console...), then Build. Nothing is downloaded until a game is picked, and
+only the toolchains for the outputs ticked. A `v*` tag here puts it on the
+release ([all-games.yml](.github/workflows/all-games.yml)).
+
+A game joins the list with a line in `catalog.json` once it has a release
+carrying `launcher/launcher.json`. A game with more than one output lists
+them as `choices` so the player picks.
 
 ## Building and trying it
 
