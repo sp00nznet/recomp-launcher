@@ -4,6 +4,18 @@ Versions follow [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-30
+
+### Added
+- The all-games launcher (`-X main.all=true` or `--all`): a list of every
+  game in `catalog.json`; picking one fetches its `launcher.json` at its
+  newest release, then it is that game's installer, outputs included. Built
+  and released as Recomp-Launcher by `all-games.yml`.
+- README screenshots of every screen.
+
+### Changed
+- CI runs on macOS 15 (macOS 14 runners retire on 2026-11-02).
+
 ## [0.4.0] - 2026-10-22
 
 ### Added
