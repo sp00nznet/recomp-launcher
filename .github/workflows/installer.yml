@@ -40,7 +40,7 @@ jobs:
         run: |
           all='[{"platform":"windows","os":"windows-2022","file":"windows-x64.exe","ldflags":"-H=windowsgui"},
                 {"platform":"linux","os":"ubuntu-24.04","file":"linux-x64"},
-                {"platform":"macos","os":"macos-14","file":"macos-arm64"}]'
+                {"platform":"macos","os":"macos-15","file":"macos-arm64"}]'
           echo "matrix=$(jq -c --arg p "$PLATFORMS" '{include: [.[] | select(.platform as $x | $p | split(" ") | index($x))]}' <<<"$all")" >> "$GITHUB_OUTPUT"
 
   build:
