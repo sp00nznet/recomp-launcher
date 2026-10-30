@@ -14,6 +14,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"sort"
 	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -26,8 +27,22 @@ var all = "false"
 
 // entry is one game in catalog.json: a repo whose releases carry launcher/launcher.json.
 type entry struct {
-	Repo  string `json:"repo"`
-	Title string `json:"title"`
+	Repo     string `json:"repo"`
+	Title    string `json:"title"`
+	Platform string `json:"platform"` // what it was made for: PC, N64, Xbox 360...
+}
+
+// platforms: the catalog's platforms, most games first, for the filter tabs.
+func platforms(games []entry) []string {
+	n := map[string]int{}
+	var ps []string
+	for _, e := range games {
+		if n[e.Platform]++; n[e.Platform] == 1 {
+			ps = append(ps, e.Platform)
+		}
+	}
+	sort.SliceStable(ps, func(i, j int) bool { return n[ps[i]] > n[ps[j]] })
+	return ps
 }
 
 func loadCatalog() ([]entry, error) {
@@ -98,12 +113,26 @@ func (a *App) toPicker() {
 	}
 }
 
-// drawPick: every game, three to a row; a dot on the ones already built.
+// drawPick: a tab per platform, then its games three to a row; a dot on the ones already built.
 func (a *App) drawPick(dst *ebiten.Image) {
-	a.text(dst, "Pick a game", 36, 112, 20, bold, ink)
-	const cols, w, h, gap = 3, 268.0, 34.0, 12.0
+	x := 36.0
+	for _, p := range append([]string{""}, platforms(a.games)...) {
+		l := p
+		if l == "" {
+			l = "All games"
+		}
+		w := a.width(l, 15, regular) + 28
+		a.button(dst, x, 110, w, 32, l, a.plat == p, true, func() { a.plat = p })
+		x += w + 8
+	}
+	const cols, w, h, gap = 3, 268.0, 32.0, 12.0
+	n := 0
 	for i, e := range a.games {
-		x, y := 36+float64(i%cols)*(w+gap), 146+float64(i/cols)*(h+6)
+		if a.plat != "" && e.Platform != a.plat {
+			continue
+		}
+		x, y := 36+float64(n%cols)*(w+gap), 158+float64(n/cols)*(h+6)
+		n++
 		a.button(dst, x, y, w, h, a.fit(e.Title, 15, regular, w-40), false, true, func() { a.pick(e) })
 		if a.isBuilt[i] {
 			a.dot(dst, x+14, y+h/2, good)

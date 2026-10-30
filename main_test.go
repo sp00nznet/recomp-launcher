@@ -127,3 +127,19 @@ func TestPickedKeepsManifestOrderAndDropsUnknown(t *testing.T) {
 		t.Fatalf("picked = %v, want [psp dreamcast]", got)
 	}
 }
+
+func TestPlatformsMostGamesFirst(t *testing.T) {
+	g := []entry{{Platform: "N64"}, {Platform: "PC"}, {Platform: "PC"}, {Platform: "Xbox"}}
+	if p := platforms(g); len(p) != 3 || p[0] != "PC" || p[1] != "N64" || p[2] != "Xbox" {
+		t.Fatal(p)
+	}
+	c, err := loadCatalog()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range c {
+		if e.Platform == "" {
+			t.Fatal(e.Repo, "has no platform")
+		}
+	}
+}
