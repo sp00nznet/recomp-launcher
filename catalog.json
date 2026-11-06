@@ -60,6 +60,11 @@
   "platform": "PC"
  },
  {
+  "repo": "sp00nznet/mechcommander2-recomp",
+  "title": "MechCommander 2",
+  "platform": "PC"
+ },
+ {
   "repo": "sp00nznet/metalslug",
   "title": "Metal Slug",
   "platform": "Neo Geo"
