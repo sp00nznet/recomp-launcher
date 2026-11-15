@@ -5,6 +5,7 @@ package term
 import (
 	"io"
 	"os/exec"
+	"sync"
 	"syscall"
 
 	"github.com/creack/pty"
@@ -18,15 +19,26 @@ func Start(dir, name string, args ...string) (*Proc, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Proc{Reader: eofOnEIO{f}, Writer: f, Pid: cmd.Process.Pid, Wait: func() int {
-		cmd.Wait()
-		f.Close()
-		return cmd.ProcessState.ExitCode()
-	}}, nil
+	pid := cmd.Process.Pid
+	var mu sync.Mutex
+	ended := false
+	return &Proc{Reader: eofOnEIO{f}, Writer: f, Pid: pid,
+		kill: func() { // its session's process group: everything it started
+			mu.Lock()
+			defer mu.Unlock()
+			if !ended { // once it's gone, its pid may be someone else's
+				syscall.Kill(-pid, syscall.SIGTERM)
+			}
+		},
+		Wait: func() int {
+			cmd.Wait()
+			mu.Lock()
+			ended = true
+			mu.Unlock()
+			f.Close()
+			return cmd.ProcessState.ExitCode()
+		}}, nil
 }
-
-// Kill stops the command and everything it started.
-func Kill(pid int) { syscall.Kill(-pid, syscall.SIGTERM) }
 
 // On Linux a pty's reader gets EIO, not EOF, once the child has gone.
 type eofOnEIO struct{ r io.Reader }

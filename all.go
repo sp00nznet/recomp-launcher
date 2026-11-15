@@ -9,6 +9,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"image"
 	"io"
 	"net/http"
 	"os"
@@ -89,12 +90,16 @@ func built(repo string) bool {
 }
 
 func (a *App) pick(e entry) {
+	a.picking++
+	n := a.picking
 	a.msg = "Getting " + e.Title + "…"
 	go func() {
+		defer guard()
 		tag, m, err := release(e.Repo)
-		a.mu.Lock()
-		defer a.mu.Unlock()
-		a.later = append(a.later, func() {
+		a.ui(func() {
+			if n != a.picking { // another game was clicked while this one came: that one is wanted
+				return
+			}
 			if err != nil {
 				a.msg = "Couldn't get " + e.Title + ": " + err.Error()
 				return
@@ -108,12 +113,14 @@ func (a *App) pick(e entry) {
 
 func (a *App) toPicker() {
 	a.m, a.scr, a.msg, a.accent = manifest{}, scPick, "", rgb(0xd0342c)
+	ebiten.SetWindowTitle("Recomp launcher " + version) // not the last game's any more
 	for i, e := range a.games {
 		a.isBuilt[i] = built(e.Repo)
 	}
 }
 
-// drawPick: a tab per platform, then its games three to a row; a dot on the ones already built.
+// drawPick: a tab per platform, then its games three to a row; a dot on the
+// ones already built. A list longer than the window scrolls with the wheel.
 func (a *App) drawPick(dst *ebiten.Image) {
 	x := 36.0
 	for _, p := range append([]string{""}, platforms(a.games)...) {
@@ -122,20 +129,32 @@ func (a *App) drawPick(dst *ebiten.Image) {
 			l = "All games"
 		}
 		w := a.width(l, 15, regular) + 28
-		a.button(dst, x, 110, w, 32, l, a.plat == p, true, func() { a.plat = p })
+		a.button(dst, x, 110, w, 32, l, a.plat == p, true, func() { a.plat, a.scroll = p, 0 })
 		x += w + 8
 	}
-	const cols, w, h, gap = 3, 268.0, 32.0, 12.0
-	n := 0
+	const cols, w, h, gap, top, bottom = 3, 268.0, 32.0, 12.0, 158, 540
+	var shown []int
 	for i, e := range a.games {
-		if a.plat != "" && e.Platform != a.plat {
-			continue
+		if a.plat == "" || e.Platform == a.plat {
+			shown = append(shown, i)
 		}
-		x, y := 36+float64(n%cols)*(w+gap), 158+float64(n/cols)*(h+6)
-		n++
-		a.button(dst, x, y, w, h, a.fit(e.Title, 15, regular, w-40), false, true, func() { a.pick(e) })
+	}
+	view := float64(bottom - top)
+	over := float64((len(shown)+cols-1)/cols)*(h+6) - 6 - view // how much doesn't fit
+	a.scroll = max(0, min(a.scroll, over))
+	// drawn on the list's part of the window only, and clicked there only
+	list := dst.SubImage(image.Rect(0, int(top*a.k), int(LW*a.k), int(bottom*a.k))).(*ebiten.Image)
+	a.clip = image.Rect(0, top, LW, bottom)
+	for n, i := range shown {
+		e := a.games[i]
+		x, y := 36+float64(n%cols)*(w+gap), top+float64(n/cols)*(h+6)-a.scroll
+		a.button(list, x, y, w, h, a.fit(e.Title, 15, regular, w-40), false, true, func() { a.pick(e) })
 		if a.isBuilt[i] {
-			a.dot(dst, x+14, y+h/2, good)
+			a.dot(list, x+14, y+h/2, good)
 		}
+	}
+	a.clip = image.Rectangle{}
+	if over > 0 { // a scroll bar: there's more
+		a.round(dst, LW-28, top+a.scroll/(over+view)*view, 4, view*view/(over+view), 2, edge)
 	}
 }

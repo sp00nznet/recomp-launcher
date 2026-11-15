@@ -2,8 +2,10 @@ package main
 
 import (
 	"archive/zip"
+	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -86,6 +88,15 @@ func TestGameFolderAndLabels(t *testing.T) {
 	if !m.isGame(cd) {
 		t.Fatal("an alternative in a subfolder")
 	}
+	m.Game.Files = []string{"DATA/*.iso"}
+	os.MkdirAll(filepath.Join(iso, "DATA"), 0o755)
+	if m.isGame(iso) {
+		t.Fatal("an empty subfolder matched")
+	}
+	os.WriteFile(filepath.Join(iso, "DATA", "Disc 1.ISO"), nil, 0o644)
+	if !m.isGame(iso) {
+		t.Fatal("a glob in a subfolder missed its file")
+	}
 	if got := playLabel("/x/Yuri's Revenge (recomp).cmd"); got != "Play Yuri's Revenge" {
 		t.Fatal(got)
 	}
@@ -93,6 +104,64 @@ func TestGameFolderAndLabels(t *testing.T) {
 	gm, err := loadManifest(b)
 	if err != nil || gm.Repo == "" || len(perOS(gm.Setup)) == 0 || gm.Play == "" {
 		t.Fatalf("game/launcher.json: %v %+v", err, gm)
+	}
+}
+
+// The build folder is the player's to name: brackets in its path aren't a
+// pattern, so a finished build's launchers are found.
+func TestLaunchersInAFolderWithBrackets(t *testing.T) {
+	a := &App{}
+	a.m.Repo, a.m.Play = "sp00nznet/redalert2-recomp", "* (recomp).*"
+	a.st.Root = filepath.Join(t.TempDir(), "Games [old]")
+	launcher := "Yuri's Revenge (recomp).sh"
+	if windows {
+		launcher = "Yuri's Revenge (recomp).cmd"
+	}
+	os.MkdirAll(a.repoDir(), 0o755)
+	os.WriteFile(filepath.Join(a.repoDir(), launcher), nil, 0o644)
+	os.WriteFile(filepath.Join(a.repoDir(), "README.md"), nil, 0o644)
+	a.findLaunchers()
+	if len(a.launchers) != 1 || filepath.Base(a.launchers[0]) != launcher {
+		t.Fatalf("launchers %q", a.launchers)
+	}
+}
+
+// Cancel in the downloads stops them, and a missing setup command is said
+// before anything is downloaded.
+func TestCancelStopsTheDownloads(t *testing.T) {
+	ctx, stop := context.WithCancel(context.Background())
+	stop()
+	a := &App{lines: []string{""}}
+	srcs := []source{{"sp00nznet/redalert2-recomp", "main", "redalert2-recomp"}}
+	if code := a.runBuild(job{ctx: ctx, root: t.TempDir(), srcs: srcs, argv: []string{"setup"}}, nil); code != -2 {
+		t.Fatalf("exit %d (%s): the download went on", code, a.reason)
+	}
+	a = &App{lines: []string{""}}
+	if code := a.runBuild(job{ctx: ctx, root: t.TempDir(), srcs: srcs}, nil); code != -1 || !strings.Contains(a.reason, "no setup command") {
+		t.Fatalf("exit %d (%s)", code, a.reason)
+	}
+}
+
+// A path a little too long loses a little, not half.
+func TestFitCutsOnlyWhatItMust(t *testing.T) {
+	a, err := newApp(false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	a.k = 1
+	s := strings.Repeat("abcdefghij", 10)
+	w := a.width(s, 13, mono) - 1
+	if got := a.fit(s, 13, mono, w); a.width(got, 13, mono) > w || len([]rune(got)) < 90 {
+		t.Fatalf("%d runes for %.0f wide: %q", len([]rune(got)), w, got)
+	}
+	if got := a.fit("short", 13, mono, 1000); got != "short" {
+		t.Fatal(got)
+	}
+}
+
+func TestDesktopExecQuotes(t *testing.T) {
+	if got, want := desktopExec(`/home/me/100% "Games"/$x.sh`), `"/home/me/100%% \\"Games\\"/\\$x.sh"`; got != want {
+		t.Fatalf("got %s, want %s", got, want)
 	}
 }
 
