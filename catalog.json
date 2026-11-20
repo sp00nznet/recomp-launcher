@@ -10,6 +10,16 @@
   "platform": "Xbox"
  },
  {
+  "repo": "sp00nznet/carnevil",
+  "title": "CarnEvil",
+  "platform": "Arcade"
+ },
+ {
+  "repo": "sp00nznet/civ3",
+  "title": "Civilization III: Conquests",
+  "platform": "PC"
+ },
+ {
   "repo": "sp00nznet/diddykongracing",
   "title": "Diddy Kong Racing",
   "platform": "N64"
@@ -33,6 +43,16 @@
   "repo": "sp00nznet/gunman",
   "title": "Gunman Chronicles",
   "platform": "PC"
+ },
+ {
+  "repo": "sp00nznet/pod-recomp",
+  "title": "POD Gold",
+  "platform": "PC"
+ },
+ {
+  "repo": "sp00nznet/saintsrow",
+  "title": "Saints Row",
+  "platform": "Xbox 360"
  },
  {
   "repo": "sp00nznet/hotd-recomp",
