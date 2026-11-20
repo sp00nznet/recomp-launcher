@@ -23,6 +23,7 @@ type manifest struct {
 		Files    []string `json:"files"`    // a folder holding all of these is the game; "a|b": either
 		Steam    string   `json:"steam"`    // its folder under steamapps/common
 		Registry []string `json:"registry"` // Windows: HKLM\key\value naming its folder
+		Get      string   `json:"get"`      // an https page where the player gets it themselves: opened in their browser, never fetched
 	} `json:"game"`
 	Sources []source            `json:"sources"` // more repos the setup expects beside the game's (its toolkit)
 	Setup   map[string][]string `json:"setup"`   // the setup command by GOOS or "default"; {game} is the game folder

@@ -845,7 +845,12 @@ func (a *App) drawStart(dst *ebiten.Image) {
 		a.text(dst, a.m.Game.Name+" was not found yet", 76, 156, 17, bold, ink)
 		a.text(dst, "Choose the folder it is installed in: the one with "+a.m.filesText()+".", 56, 190, 14, regular, dim)
 	}
-	a.button(dst, LW-56-170, 162, 170, 40, "Choose folder…", false, true, a.chooseGame)
+	if g := a.m.Game.Get; strings.HasPrefix(g, "https://") && !a.m.isGame(a.st.Game) {
+		a.button(dst, LW-56-170, 136, 170, 40, "Choose folder…", false, true, a.chooseGame)
+		a.button(dst, LW-56-170, 184, 170, 40, "Where to get it…", false, true, func() { open(g) })
+	} else {
+		a.button(dst, LW-56-170, 162, 170, 40, "Choose folder…", false, true, a.chooseGame)
+	}
 
 	a.card(dst, 256, 100, "WHERE TO BUILD IT")
 	a.text(dst, a.fit(a.repoDir(), 13, mono, 600), 56, 296, 13, mono, ink)
