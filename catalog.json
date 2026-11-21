@@ -170,6 +170,11 @@
   "platform": "SNES"
  },
  {
+  "repo": "sp00nznet/templeos",
+  "title": "TempleOS",
+  "platform": "OS"
+ },
+ {
   "repo": "sp00nznet/hotd-recomp",
   "title": "The House of the Dead",
   "platform": "PC"
@@ -293,6 +298,31 @@
   "repo": "sp00nznet/wackywheels-recomp",
   "title": "Wacky Wheels",
   "platform": "PC"
+ },
+ {
+  "repo": "sp00nznet/win2000",
+  "title": "Windows 2000",
+  "platform": "OS"
+ },
+ {
+  "repo": "sp00nznet/win95",
+  "title": "Windows 95",
+  "platform": "OS"
+ },
+ {
+  "repo": "sp00nznet/win98",
+  "title": "Windows 98 SE",
+  "platform": "OS"
+ },
+ {
+  "repo": "sp00nznet/winnt4",
+  "title": "Windows NT 4.0",
+  "platform": "OS"
+ },
+ {
+  "repo": "sp00nznet/winxp",
+  "title": "Windows XP",
+  "platform": "OS"
  },
  {
   "repo": "sp00nznet/wingcommander-recomp",
