@@ -1,7 +1,22 @@
 [
  {
+  "repo": "sp00nznet/afterlife-recomp",
+  "title": "Afterlife",
+  "platform": "PC"
+ },
+ {
+  "repo": "sp00nznet/amazingmidi-recomp",
+  "title": "AmazingMIDI",
+  "platform": "PC"
+ },
+ {
   "repo": "sp00nznet/blakestone",
   "title": "Blake Stone",
+  "platform": "PC"
+ },
+ {
+  "repo": "sp00nznet/bcc55-recomp",
+  "title": "Borland C++ 5.5",
   "platform": "PC"
  },
  {
@@ -10,9 +25,34 @@
   "platform": "Xbox"
  },
  {
+  "repo": "sp00nznet/carnevil",
+  "title": "CarnEvil",
+  "platform": "Arcade"
+ },
+ {
+  "repo": "sp00nznet/civ3",
+  "title": "Civilization III: Conquests",
+  "platform": "PC"
+ },
+ {
+  "repo": "sp00nznet/corridor7",
+  "title": "Corridor 7: Alien Invasion",
+  "platform": "PC"
+ },
+ {
+  "repo": "sp00nznet/crazytaxi-recomp",
+  "title": "Crazy Taxi",
+  "platform": "PC"
+ },
+ {
   "repo": "sp00nznet/diddykongracing",
   "title": "Diddy Kong Racing",
   "platform": "N64"
+ },
+ {
+  "repo": "sp00nznet/earthsiege2-recomp",
+  "title": "Earth Siege 2",
+  "platform": "PC"
  },
  {
   "repo": "sp00nznet/ejay",
@@ -30,9 +70,109 @@
   "platform": "PC"
  },
  {
+  "repo": "sp00nznet/gk1-recomp",
+  "title": "Gabriel Knight: Sins of the Fathers",
+  "platform": "PC"
+ },
+ {
   "repo": "sp00nznet/gunman",
   "title": "Gunman Chronicles",
   "platform": "PC"
+ },
+ {
+  "repo": "sp00nznet/jazz-recomp",
+  "title": "Jazz Jackrabbit",
+  "platform": "PC"
+ },
+ {
+  "repo": "sp00nznet/johnny-recomp",
+  "title": "Johnny Castaway",
+  "platform": "PC"
+ },
+ {
+  "repo": "sp00nznet/kiss-recomp",
+  "title": "KISS Psycho Circus: The Nightmare Child",
+  "platform": "PC"
+ },
+ {
+  "repo": "sp00nznet/flashmx-recomp",
+  "title": "Macromedia Flash MX 2004",
+  "platform": "PC"
+ },
+ {
+  "repo": "sp00nznet/marioismissing-dos",
+  "title": "Mario Is Missing! CD-ROM Deluxe (DOS)",
+  "platform": "PC"
+ },
+ {
+  "repo": "sp00nznet/napster-recomp",
+  "title": "Napster",
+  "platform": "PC"
+ },
+ {
+  "repo": "sp00nznet/periodictable-recomp",
+  "title": "Periodic Table 2002",
+  "platform": "PC"
+ },
+ {
+  "repo": "sp00nznet/pod-recomp",
+  "title": "POD Gold",
+  "platform": "PC"
+ },
+ {
+  "repo": "sp00nznet/retailplus-recomp",
+  "title": "Retail Plus Lite",
+  "platform": "PC"
+ },
+ {
+  "repo": "sp00nznet/riseofnations-recomp",
+  "title": "Rise of Nations: Extended Edition",
+  "platform": "PC"
+ },
+ {
+  "repo": "sp00nznet/saintsrow",
+  "title": "Saints Row",
+  "platform": "Xbox 360"
+ },
+ {
+  "repo": "sp00nznet/sambar-recomp",
+  "title": "Sambar Server",
+  "platform": "PC"
+ },
+ {
+  "repo": "sp00nznet/shogo-recomp",
+  "title": "Shogo: Mobile Armor Division",
+  "platform": "PC"
+ },
+ {
+  "repo": "sp00nznet/civnet-recomp",
+  "title": "Sid Meier's CivNet",
+  "platform": "PC"
+ },
+ {
+  "repo": "sp00nznet/simthemepark-recomp",
+  "title": "Sim Theme Park",
+  "platform": "PC"
+ },
+ {
+  "repo": "sp00nznet/spacebucks-recomp",
+  "title": "Space Bucks",
+  "platform": "PC"
+ },
+ {
+  "repo": "sp00nznet/swgb-recomp",
+  "title": "Star Wars: Galactic Battlegrounds",
+  "platform": "PC"
+ },
+ {
+  "repo": "sp00nznet/stuntrace",
+  "title": "Stunt Race FX",
+  "platform": "SNES"
+ },
+ {
+  "repo": "sp00nznet/templeos",
+  "title": "TempleOS",
+  "platform": "OS"
  },
  {
   "repo": "sp00nznet/hotd-recomp",
@@ -140,6 +280,11 @@
   "platform": "PC"
  },
  {
+  "repo": "sp00nznet/tribes2-recomp",
+  "title": "Tribes 2",
+  "platform": "PC"
+ },
+ {
   "repo": "sp00nznet/ut99-recomp",
   "title": "Unreal Tournament",
   "platform": "PC"
@@ -148,5 +293,40 @@
   "repo": "sp00nznet/vig8",
   "title": "Vigilante 8 Arcade",
   "platform": "Xbox 360"
+ },
+ {
+  "repo": "sp00nznet/wackywheels-recomp",
+  "title": "Wacky Wheels",
+  "platform": "PC"
+ },
+ {
+  "repo": "sp00nznet/win2000",
+  "title": "Windows 2000",
+  "platform": "OS"
+ },
+ {
+  "repo": "sp00nznet/win95",
+  "title": "Windows 95",
+  "platform": "OS"
+ },
+ {
+  "repo": "sp00nznet/win98",
+  "title": "Windows 98 SE",
+  "platform": "OS"
+ },
+ {
+  "repo": "sp00nznet/winnt4",
+  "title": "Windows NT 4.0",
+  "platform": "OS"
+ },
+ {
+  "repo": "sp00nznet/winxp",
+  "title": "Windows XP",
+  "platform": "OS"
+ },
+ {
+  "repo": "sp00nznet/wingcommander-recomp",
+  "title": "Wing Commander (DOS)",
+  "platform": "PC"
  }
 ]
