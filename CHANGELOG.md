@@ -4,6 +4,42 @@ Versions follow [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- **Cancel** while the sources download stops them. Before, the download went
+  on and the setup then started anyway, unseen, with no way to stop it but
+  closing the window. Build is refused while a cancelled one is still
+  stopping, so two never run in one folder.
+- The setup and everything it started stop with **Cancel**, or with the
+  installer if it is closed or dies mid-build. On Windows they run in a job
+  object: `taskkill /T` missed a process whose parent had already exited,
+  and one with a console of its own outlived the installer.
+- An escape sequence or a UTF-8 character cut in two by a read no longer
+  leaks into the log and the window (`[38;5;14m`, `�`), where it could also
+  hide a `[n/N]` step from the bar. `tput sgr0`'s `ESC ( B` and titles ended
+  by `ESC \` are cleaned too.
+- Windows: a folder with accents picked with **Choose folder…**
+  (`C:\Jogos\Coleção`) is read right, not in the OEM code page; the picker
+  opens in front of the installer; a drive's root (a disc: `E:\`) stays
+  `E:\`, here and from the registry.
+- Windows: **Play** and **Open** use the shell's own open, not `cmd /c start`:
+  a `%` or `^` in a path is just a character, and a launcher that can't start
+  says so.
+- A build folder with brackets in its path (`Games [old]`) finds its
+  launchers; a glob in a subfolder of `game.files` (`DATA/*.iso`) matches.
+- A path or log line too long for its space loses only what doesn't fit, not
+  half of it. The bar's sweep stays inside the part done.
+- The game list scrolls with the mouse wheel once it is longer than the
+  window (a few more games would have fallen off it), and the window's title
+  goes back to the list's after a game.
+- A panic in the window's update or drawing is logged and shown, as one at
+  start is: they run on Ebitengine's goroutine, which main's guard can't see.
+- A setup command missing for this OS is said before the downloads, not
+  after. Windows: one given as a path (`tools\setup.cmd`) is the repo's, as
+  elsewhere.
+- macOS: a `"` in a game's name can't break the folder prompt. Linux: desktop
+  shortcuts quote their path as the Desktop Entry spec has it, and the Snap
+  Steam library is searched.
+
 ## [0.6.0] - 2026-10-30
 
 ### Added

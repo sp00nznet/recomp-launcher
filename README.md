@@ -46,7 +46,7 @@ In the game's repo:
    | `repo` | `owner/name` of the game's repo |
    | `accent` | `#rrggbb` for the buttons and the bar |
    | `note` | What the build needs and how long it takes, by OS (`windows`, `darwin`, `linux`) or `default` |
-   | `game.name`, `game.files` | The game, and the files that prove a folder is it (a glob such as `*.iso` matches a file the player named; `a|b` is either, such as `HOVER.EXE|hover*.zip`) |
+   | `game.name`, `game.files` | The game, and the files that prove a folder is it (a glob such as `*.iso` matches a file the player named, in a subfolder too: `DATA/*.iso`; `a|b` is either, such as `HOVER.EXE|hover*.zip`) |
    | `game.steam` | Its folder under `steamapps/common` |
    | `game.registry` | Windows: `HKLM\key\value` entries holding its folder |
    | `sources` | More repos the setup expects beside the game's (`{"repo", "ref", "dir"}`), its toolkit |

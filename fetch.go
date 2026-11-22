@@ -2,6 +2,7 @@ package main
 
 import (
 	"archive/zip"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -14,12 +15,17 @@ import (
 
 // fetch puts repo at ref into dest from GitHub's zip of it, so the player
 // needs no git. A git checkout already there is left alone: its setup
-// updates it. Files the new version dropped stay behind.
-func fetch(repo, ref, dest string) error {
+// updates it. Files the new version dropped stay behind. Cancelling ctx
+// stops the download.
+func fetch(ctx context.Context, repo, ref, dest string) error {
 	if isDir(filepath.Join(dest, ".git")) {
 		return nil
 	}
-	resp, err := http.Get("https://github.com/" + repo + "/archive/" + ref + ".zip")
+	req, err := http.NewRequestWithContext(ctx, "GET", "https://github.com/"+repo+"/archive/"+ref+".zip", nil)
+	if err != nil {
+		return err
+	}
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err
 	}

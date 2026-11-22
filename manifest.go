@@ -105,37 +105,59 @@ func (m manifest) isGame(dir string) bool {
 }
 
 // hasFile: dir holds a file named f, or one matching it when f is a glob
-// ("*.iso": a disc image whose name the player chose). The glob is matched
-// against the names, not the path, so a folder like "Games [USA]" is safe.
-// "a|b" is either: the game's folder or a zip or image of it.
+// ("*.iso": a disc image whose name the player chose). "a|b" is either: the
+// game's folder or a zip or image of it.
 func hasFile(dir, f string) bool {
-	if alts := strings.Split(f, "|"); len(alts) > 1 {
-		for _, a := range alts {
-			if hasFile(dir, a) {
-				return true
-			}
-		}
-		return false
-	}
-	if !strings.ContainsAny(f, `*?[`) {
-		return fileExists(filepath.Join(dir, f))
-	}
-	ents, _ := os.ReadDir(dir)
-	for _, e := range ents {
-		// case-blind: Windows and macOS folders are, and an ISO is as often .ISO
-		if ok, _ := filepath.Match(strings.ToLower(f), strings.ToLower(e.Name())); ok && !e.IsDir() {
+	for _, alt := range strings.Split(f, "|") {
+		if len(glob(dir, alt)) > 0 {
 			return true
 		}
 	}
 	return false
 }
 
+// glob: the files in dir that pattern names, with a glob in any part of it
+// ("DATA/*.iso"). Only the pattern's parts are matched, against the names,
+// so a folder like "Games [USA]" on the way to dir is safe (filepath.Glob
+// would read its brackets as a pattern), and case-blind: Windows and macOS
+// folders are, and an ISO is as often .ISO.
+func glob(dir, pattern string) []string {
+	parts := strings.Split(filepath.ToSlash(pattern), "/")
+	var found []string
+	var walk func(dir string, i int)
+	walk = func(dir string, i int) {
+		names := []string{parts[i]}
+		if strings.ContainsAny(parts[i], `*?[`) {
+			names = nil
+			ents, _ := os.ReadDir(dir)
+			for _, e := range ents {
+				if ok, _ := filepath.Match(strings.ToLower(parts[i]), strings.ToLower(e.Name())); ok {
+					names = append(names, e.Name())
+				}
+			}
+		}
+		last := i == len(parts)-1
+		for _, n := range names {
+			switch p := filepath.Join(dir, n); {
+			case last && fileExists(p):
+				found = append(found, p)
+			case !last && isDir(p):
+				walk(p, i+1)
+			}
+		}
+	}
+	walk(dir, 0)
+	return found
+}
+
 // findGame looks where stores install it: the registry entries, then every
 // Steam library. It returns the folder and where it was found.
 func (m manifest) findGame() (string, string) {
 	for _, r := range m.Game.Registry {
-		if d := strings.TrimRight(regValue(r), `\`); m.isGame(d) {
-			return d, "Found on this computer"
+		if v := regValue(r); v != "" {
+			if d := filepath.Clean(v); m.isGame(d) { // no trailing \, but a disc's root stays E:\, not E:
+				return d, "Found on this computer"
+			}
 		}
 	}
 	if m.Game.Steam != "" {
@@ -162,7 +184,8 @@ func steamLibraries() []string {
 		roots = []string{filepath.Join(home(), "Library", "Application Support", "Steam")}
 	default:
 		roots = []string{filepath.Join(home(), ".local", "share", "Steam"), filepath.Join(home(), ".steam", "steam"),
-			filepath.Join(home(), ".var", "app", "com.valvesoftware.Steam", ".local", "share", "Steam")}
+			filepath.Join(home(), ".var", "app", "com.valvesoftware.Steam", ".local", "share", "Steam"), // Flatpak
+			filepath.Join(home(), "snap", "steam", "common", ".local", "share", "Steam")}                // Snap (Ubuntu's)
 	}
 	var libs []string
 	for _, r := range roots {

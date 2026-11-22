@@ -10,7 +10,9 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"embed"
+	"encoding/base64"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -28,6 +30,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
@@ -110,6 +114,7 @@ type App struct {
 	frame          int
 	hits, nextHits []hit
 	hover          bool
+	clip           image.Rectangle // while drawing a scrolled list: the part of it that shows
 
 	mu        sync.Mutex // the job goroutine writes these
 	lines     []string   // the log; the last is the line being written
@@ -117,7 +122,10 @@ type App struct {
 	steps     int
 	stepText  string
 	start     time.Time
-	pid       int
+	proc      *term.Proc         // the setup, once it is running
+	stop      context.CancelFunc // stops the build's downloads
+	running   bool               // a build's goroutine hasn't finished, cancelled or not
+	cancelled bool
 	reason    string
 	logPath   string
 	newTag    string // a newer release than version, and its page
@@ -131,7 +139,19 @@ type App struct {
 
 	games   []entry // the all-games launcher's list; nil in a game's own installer
 	isBuilt []bool
-	plat    string // the platform tab picked; "" is every game
+	plat    string  // the platform tab picked; "" is every game
+	scroll  float64 // how far down the list of games is scrolled
+	picking int     // counts the games picked: only the last one's launcher.json is loaded
+}
+
+// job is what a build needs, taken when it starts: the player may pick
+// another folder or game while a cancelled one is still winding down.
+type job struct {
+	ctx  context.Context
+	root string // the sources go in here
+	dir  string // the game's repo, where the setup runs
+	srcs []source
+	argv []string // the setup command, filled in
 }
 
 func main() {
@@ -151,15 +171,14 @@ func main() {
 	}
 	if strings.HasPrefix(version, "v") && a.shots == "" && a.games == nil { // a branch build is newer than any release
 		go func() {
+			defer guard()
 			tag, url := latest(a.m.Repo, version)
 			a.mu.Lock()
 			a.newTag, a.newURL = tag, url
 			a.mu.Unlock()
 		}()
 	}
-	if a.games != nil {
-		ebiten.SetWindowTitle("Recomp launcher " + version)
-	} else {
+	if a.games == nil { // the all-games launcher's is the list's (toPicker)
 		ebiten.SetWindowTitle(a.m.Title + " — recomp installer " + version)
 	}
 	ebiten.SetWindowSize(LW, LH)
@@ -246,8 +265,7 @@ func (a *App) findLaunchers() {
 	if windows {
 		exts = map[string]bool{".cmd": true, ".lnk": true, ".bat": true}
 	}
-	m, _ := filepath.Glob(filepath.Join(a.repoDir(), a.m.Play))
-	for _, p := range m {
+	for _, p := range glob(a.repoDir(), a.m.Play) {
 		if exts[strings.ToLower(filepath.Ext(p))] {
 			a.launchers = append(a.launchers, p)
 		}
@@ -261,66 +279,92 @@ func (a *App) build() {
 	if !a.m.isGame(a.st.Game) {
 		return
 	}
+	a.mu.Lock()
+	running := a.running
+	a.mu.Unlock()
+	if running { // cancelled, and its setup not stopped yet: two in one folder would trip over each other
+		a.msg = "The last build is still stopping. Try again in a moment."
+		return
+	}
 	a.save()
+	ctx, stop := context.WithCancel(context.Background())
+	j := job{ctx: ctx, root: a.st.Root, dir: a.repoDir(), argv: a.setupCommand(),
+		srcs: append([]source{{a.m.Repo, commit, a.m.name()}}, a.m.Sources...)}
 	a.mu.Lock()
 	a.scr, a.msg, a.details = scWork, "", false
 	a.lines, a.step, a.steps, a.stepText, a.reason = []string{""}, 0, 0, "Getting the recomp's source", ""
 	a.start = time.Now()
+	a.running, a.cancelled, a.stop = true, false, stop
 	a.mu.Unlock()
 
 	logs := filepath.Join(a.st.Root, "logs")
 	os.MkdirAll(logs, 0o755)
 	a.logPath = filepath.Join(logs, a.m.name()+"-"+a.start.Format("20060102-150405")+".log")
-	logf, _ := os.Create(a.logPath)
-	if logf != nil {
+	logf, err := os.Create(a.logPath)
+	if err != nil {
+		a.logPath = "" // no "Open the log" for one that isn't there
+	} else {
 		fmt.Fprintf(logf, "recomp installer: %s at %s, %s/%s\ngame: %s\nbuilding in: %s\n",
-			a.m.Repo, commit, runtime.GOOS, runtime.GOARCH, a.st.Game, a.repoDir())
+			a.m.Repo, commit, runtime.GOOS, runtime.GOARCH, a.st.Game, j.dir)
 	}
 	go func() {
-		code := a.runBuild(logf)
-		a.finish(code, logf)
+		defer guard()
+		a.finish(a.runBuild(j, logf), logf)
 	}()
 }
 
-func (a *App) runBuild(logf *os.File) int {
-	srcs := append([]source{{a.m.Repo, commit, a.m.name()}}, a.m.Sources...)
-	for _, s := range srcs {
-		a.out(fmt.Sprintf("Downloading %s (%s)\n", s.Repo, s.Ref), logf)
-		if err := fetch(s.Repo, s.Ref, filepath.Join(a.st.Root, s.Dir)); err != nil {
-			a.out(err.Error()+"\n", logf)
-			a.setReason("Could not download " + s.Repo + ". Check the internet connection and try again.")
-			return -1
-		}
-	}
+// setupCommand: the setup for this OS, with the game's folder and the choices in it.
+func (a *App) setupCommand() []string {
 	argv := append([]string(nil), perOS(a.m.Setup)...)
 	for i := range argv {
 		argv[i] = strings.ReplaceAll(argv[i], "{game}", a.st.Game)
 		argv[i] = strings.ReplaceAll(argv[i], "{choices}", strings.Join(a.m.picked(a.st.Picked), ","))
 	}
-	if len(argv) == 0 {
+	return argv
+}
+
+func (a *App) runBuild(j job, logf *os.File) int {
+	if len(j.argv) == 0 { // said before the downloads, not after them
 		a.setReason("This installer has no setup command for " + runtime.GOOS + ".")
 		return -1
 	}
-	a.out("\n> "+strings.Join(argv, " ")+"\n", logf)
-	p, err := term.Start(a.repoDir(), argv[0], argv[1:]...)
+	for _, s := range j.srcs {
+		a.out(fmt.Sprintf("Downloading %s (%s)\n", s.Repo, s.Ref), logf)
+		if err := fetch(j.ctx, s.Repo, s.Ref, filepath.Join(j.root, s.Dir)); err != nil {
+			if j.ctx.Err() != nil { // cancelled
+				return -2
+			}
+			a.out(err.Error()+"\n", logf)
+			a.setReason("Could not download " + s.Repo + ". Check the internet connection and try again.")
+			return -1
+		}
+	}
+	a.out("\n> "+strings.Join(j.argv, " ")+"\n", logf)
+	p, err := term.Start(j.dir, j.argv[0], j.argv[1:]...)
 	if err != nil {
 		a.out(err.Error()+"\n", logf)
 		a.setReason("Could not start the setup: " + err.Error())
 		return -1
 	}
 	a.mu.Lock()
-	a.pid = p.Pid
+	a.proc = p
+	cancelled := a.cancelled
 	a.mu.Unlock()
+	if cancelled { // while it was starting: cancel had no process to stop yet
+		p.Kill()
+	}
+	var c term.Cleaner
 	buf := make([]byte, 4096)
 	for {
 		n, err := p.Read(buf)
 		if n > 0 {
-			a.out(term.Clean(string(buf[:n])), logf)
+			a.out(c.Clean(buf[:n]), logf)
 		}
 		if err != nil {
 			break
 		}
 	}
+	a.out(c.Flush(), logf)
 	return p.Wait()
 }
 
@@ -362,14 +406,22 @@ func (a *App) setReason(s string) {
 	a.mu.Unlock()
 }
 
+// ui runs fn on the UI's thread at the next update: how a goroutine changes the screen.
+func (a *App) ui(fn func()) {
+	a.mu.Lock()
+	a.later = append(a.later, fn)
+	a.mu.Unlock()
+}
+
 // finish: the launchers it left and a zero exit code are success; otherwise
 // the scripts' own "Setup stopped: <why>" is the reason shown.
 func (a *App) finish(code int, logf *os.File) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	a.pid = 0
-	if a.scr != scWork { // cancelled
-		code = -2
+	a.proc, a.running = nil, false
+	a.stop() // its context's, once it's done with
+	if a.cancelled {
+		code, a.reason = -2, "stopped by the player"
 	}
 	a.later = append(a.later, func() {
 		a.findLaunchers()
@@ -392,8 +444,8 @@ func (a *App) finish(code int, logf *os.File) {
 	if a.reason == "" && code != 0 {
 		a.reason = fmt.Sprintf("The setup ended with exit code %d.", code)
 	}
-	if a.reason != "" {
-		a.reason = strings.ToUpper(a.reason[:1]) + a.reason[1:]
+	if r, n := utf8.DecodeRuneInString(a.reason); n > 0 { // a rune, not a byte: "échec" isn't cut in two
+		a.reason = string(unicode.ToUpper(r)) + a.reason[n:]
 	}
 	if logf != nil {
 		fmt.Fprintf(logf, "\n== exit code %d after %s\n", code, time.Since(a.start).Truncate(time.Second))
@@ -406,11 +458,15 @@ func (a *App) finish(code int, logf *os.File) {
 
 func (a *App) cancel() {
 	a.mu.Lock()
-	pid := a.pid
+	p, stop := a.proc, a.stop
+	a.cancelled = true
 	a.scr, a.msg = scStart, "Stopped. Build again to carry on: finished steps are kept."
 	a.mu.Unlock()
-	if pid != 0 {
-		term.Kill(pid)
+	if stop != nil {
+		stop() // a download under way
+	}
+	if p != nil {
+		go p.Kill() // taskkill, where there's no job, takes a moment: not on the UI's thread
 	}
 }
 
@@ -435,12 +491,16 @@ func (a *App) pickFolder(title string, then func(string)) {
 	var cmd *exec.Cmd
 	switch runtime.GOOS {
 	case "windows":
+		// owned by a topmost form, so it opens in front of the installer, not behind it;
+		// the path in base64, as PowerShell writes to a pipe in the OEM code page (C:\Jogos\Coleção)
 		cmd = term.Command("powershell", "-NoProfile", "-STA", "-Command",
 			"Add-Type -AssemblyName System.Windows.Forms; $d = New-Object System.Windows.Forms.FolderBrowserDialog; "+
-				"$d.Description = $env:PICK_TITLE; if ($d.ShowDialog() -eq 'OK') { $d.SelectedPath }")
+				"$d.Description = $env:PICK_TITLE; $top = New-Object System.Windows.Forms.Form -Property @{TopMost = $true}; "+
+				"if ($d.ShowDialog($top) -eq 'OK') { [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($d.SelectedPath)) }")
 		cmd.Env = append(os.Environ(), "PICK_TITLE="+title)
-	case "darwin":
-		cmd = exec.Command("osascript", "-e", `POSIX path of (choose folder with prompt "`+title+`")`)
+	case "darwin": // the prompt as an argument, so a " in the game's name can't break the script
+		cmd = exec.Command("osascript", "-e", "on run argv", "-e",
+			"POSIX path of (choose folder with prompt (item 1 of argv))", "-e", "end run", title)
 	default:
 		if _, err := exec.LookPath("zenity"); err == nil {
 			cmd = exec.Command("zenity", "--file-selection", "--directory", "--title="+title)
@@ -452,26 +512,31 @@ func (a *App) pickFolder(title string, then func(string)) {
 		}
 	}
 	go func() {
+		defer guard()
 		out, err := cmd.Output()
 		p := strings.TrimSpace(string(out))
-		if len(p) > 1 {
-			p = strings.TrimRight(p, `/\`)
+		if windows {
+			b, _ := base64.StdEncoding.DecodeString(p)
+			p = string(b)
 		}
 		if err == nil && p != "" {
-			a.mu.Lock()
-			a.later = append(a.later, func() { then(p) })
-			a.mu.Unlock()
+			p = filepath.Clean(p) // without a trailing slash, but a drive's root keeps its: E:\, not E:
+			a.ui(func() { then(p) })
 		}
 	}()
 }
 
 func (a *App) play(p string) {
-	var cmd *exec.Cmd
-	if windows { // start: a .cmd or .lnk, the way a double-click opens it
-		cmd = term.Command("cmd", "/c", "start", "", filepath.Base(p))
-	} else {
-		cmd = exec.Command("/bin/sh", p)
+	if windows { // a .cmd or .lnk, the way a double-click opens it
+		go func() {
+			defer guard()
+			if err := shellOpen(p, filepath.Dir(p)); err != nil {
+				a.ui(func() { a.msg = "Could not start it: " + err.Error() })
+			}
+		}()
+		return
 	}
+	cmd := exec.Command("/bin/sh", p)
 	cmd.Dir = filepath.Dir(p)
 	if err := cmd.Start(); err != nil {
 		a.msg = "Could not start it: " + err.Error()
@@ -502,8 +567,8 @@ func (a *App) desktop() {
 	}
 	for _, p := range a.launchers {
 		name := strings.TrimSuffix(filepath.Base(p), filepath.Ext(p))
-		entry := fmt.Sprintf("[Desktop Entry]\nType=Application\nName=%s\nExec=\"%s\"\nPath=%s\nTerminal=false\n",
-			name, p, filepath.Dir(p))
+		entry := fmt.Sprintf("[Desktop Entry]\nType=Application\nName=%s\nExec=%s\nPath=%s\nTerminal=false\n",
+			name, desktopExec(p), filepath.Dir(p))
 		for _, d := range dirs {
 			os.MkdirAll(d, 0o755)
 			if err := os.WriteFile(filepath.Join(d, a.m.name()+"-"+slug(name)+".desktop"), []byte(entry), 0o755); err != nil {
@@ -515,11 +580,19 @@ func (a *App) desktop() {
 	a.msg = "The shortcuts are in your applications menu and on the desktop."
 }
 
+// desktopExec quotes p for a .desktop file's Exec: " ` $ \ escaped with a \,
+// that \ doubled again by the file's own string escaping, and % doubled (a
+// field code otherwise), as the Desktop Entry spec has it.
+func desktopExec(p string) string {
+	return `"` + strings.NewReplacer(`\`, `\\\\`, `"`, `\\"`, "`", "\\\\`", `$`, `\\$`, `%`, `%%`).Replace(p) + `"`
+}
+
 func open(path string) {
 	var cmd *exec.Cmd
 	switch runtime.GOOS {
 	case "windows":
-		cmd = term.Command("rundll32", "url.dll,FileProtocolHandler", path)
+		go shellOpen(path, "")
+		return
 	case "darwin":
 		cmd = exec.Command("open", path)
 	default:
@@ -537,14 +610,17 @@ func (a *App) Layout(ow, oh int) (int, int) {
 	return int(float64(ow) * a.k), int(float64(oh) * a.k)
 }
 
+// Update and Draw run on Ebitengine's game goroutine, not main's: each has
+// its own guard, or a panic in them would vanish without a log.
 func (a *App) Update() error {
+	defer guard()
 	a.frame++
 	if ebiten.IsWindowBeingClosed() || a.quitting {
 		a.mu.Lock()
-		pid := a.pid
+		p := a.proc
 		a.mu.Unlock()
-		if pid != 0 {
-			term.Kill(pid)
+		if p != nil {
+			p.Kill()
 		}
 		return ebiten.Termination
 	}
@@ -557,6 +633,10 @@ func (a *App) Update() error {
 	}
 	if a.shots != "" {
 		a.shotScene()
+	}
+	if a.scr == scPick {
+		_, dy := ebiten.Wheel()
+		a.scroll -= dy * 38 // a row a notch; drawPick keeps it in the list
 	}
 	a.hits = a.nextHits
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
@@ -627,13 +707,24 @@ func (a *App) wrap(s string, size float64, kind int, w float64) []string {
 	return out
 }
 
-// fit cuts s in the middle (a path: its start and its end matter) to w.
+// fit cuts s in the middle (a path: its start and its end matter) to w,
+// keeping as much of it as fits.
 func (a *App) fit(s string, size float64, kind int, w float64) string {
 	r := []rune(s)
-	for n := len(r) / 2; n > 4 && a.width(s, size, kind) > w; n-- {
-		s = string(r[:n/2]) + " … " + string(r[len(r)-n/2:])
+	if len(r) <= 4 || a.width(s, size, kind) <= w {
+		return s
 	}
-	return s
+	// cut keeps n runes of s; halving finds the most that fit, at least a few
+	cut := func(n int) string { return string(r[:(n+1)/2]) + " … " + string(r[len(r)-n/2:]) }
+	lo, hi := 4, len(r)-1
+	for lo < hi {
+		if mid := (lo + hi + 1) / 2; a.width(cut(mid), size, kind) <= w {
+			lo = mid
+		} else {
+			hi = mid - 1
+		}
+	}
+	return cut(lo)
 }
 
 func (a *App) rect(dst *ebiten.Image, x, y, w, h float64, c color.Color) {
@@ -665,6 +756,9 @@ func (a *App) button(dst *ebiten.Image, x, y, w, h float64, label string, primar
 		c, fg = a.accent, rgb(0xffffff)
 	}
 	r := image.Rect(int(x), int(y), int(x+w), int(y+h))
+	if !a.clip.Empty() {
+		r = r.Intersect(a.clip) // scrolled under the list's edge: only what shows is clickable
+	}
 	cx, cy := ebiten.CursorPosition()
 	over := image.Pt(int(float64(cx)/a.k), int(float64(cy)/a.k)).In(r)
 	switch {
@@ -684,12 +778,13 @@ func (a *App) button(dst *ebiten.Image, x, y, w, h float64, label string, primar
 		kind = bold
 	}
 	a.text(dst, label, x+(w-a.width(label, size, kind))/2, y+(h-size*1.25)/2, size, kind, fg)
-	if on {
+	if on && !r.Empty() {
 		a.nextHits = append(a.nextHits, hit{r, fn})
 	}
 }
 
 func (a *App) Draw(dst *ebiten.Image) {
+	defer guard()
 	a.nextHits, a.hover = nil, false
 	dst.Fill(bg)
 	a.rect(dst, 0, 0, LW, 96, rgb(0x0b0e14))
@@ -846,13 +941,14 @@ func (a *App) drawWork(dst *ebiten.Image) {
 	// the bar: the steps done, and a sweep so it is plainly alive inside a long one
 	frac := 0.02
 	if a.steps > 0 {
-		frac = max(frac, float64(a.step-1)/float64(a.steps))
+		frac = min(1, max(frac, float64(a.step-1)/float64(a.steps))) // a script's [12/11] doesn't overflow it
 	}
 	bw := float64(LW - 72)
+	done, sw := bw*frac, min(60, bw*frac)
 	a.round(dst, 36, 196, bw, 14, 7, panel)
-	a.round(dst, 36, 196, bw*frac, 14, 7, a.accent)
+	a.round(dst, 36, 196, done, 14, 7, a.accent)
 	sweep := float64(a.frame%90) / 90
-	a.round(dst, 36+bw*frac*sweep, 196, min(60, bw*frac), 14, 7, lighten(a.accent, 50))
+	a.round(dst, 36+(done-sw)*sweep, 196, sw, 14, 7, lighten(a.accent, 50)) // inside the part done
 
 	el := time.Since(a.start).Truncate(time.Second)
 	a.text(dst, fmt.Sprintf("%s so far. The first build is long; you can leave it running.", el), 36, 222, 14, regular, dim)
