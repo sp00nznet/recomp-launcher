@@ -4,6 +4,16 @@ Versions follow [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-22
+
+### Added
+- 36 more in the catalog, 66 in all: 4 released before, 19 games, 7 apps
+  (under PC), Stunt Race FX (SNES), and an OS tab: Windows 95, 98 SE,
+  NT 4.0, 2000, XP and TempleOS. The list scrolls.
+- `game.get` in launcher.json: an https page where the player can get the
+  game themselves. Start shows **Where to get it…** under **Choose folder…**
+  until the game is found, and opens the page in their browser.
+
 ### Fixed
 - **Cancel** while the sources download stops them. Before, the download went
   on and the setup then started anyway, unseen, with no way to stop it but

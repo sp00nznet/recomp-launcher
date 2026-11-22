@@ -49,6 +49,7 @@ In the game's repo:
    | `game.name`, `game.files` | The game, and the files that prove a folder is it (a glob such as `*.iso` matches a file the player named, in a subfolder too: `DATA/*.iso`; `a|b` is either, such as `HOVER.EXE|hover*.zip`) |
    | `game.steam` | Its folder under `steamapps/common` |
    | `game.registry` | Windows: `HKLM\key\value` entries holding its folder |
+   | `game.get` | An https page where the player can get it themselves (a public-domain or archive download). Start shows **Where to get it…** while it isn't found; the page opens in their browser and is never fetched |
    | `sources` | More repos the setup expects beside the game's (`{"repo", "ref", "dir"}`), its toolkit |
    | `setup` | The setup command by OS or `default`; `{game}` is the game's folder. It should install what's missing without asking. |
    | `play` | A glob for the launchers the setup leaves in the repo's root |
